@@ -2,6 +2,98 @@
 
 figma.showUI(__html__, { width: 800, height: 600 });
 
+figma.on('selectionchange', () => {
+  const selection = figma.currentPage.selection;
+  
+  if (selection.length === 1) {
+    const selected = selection[0];
+    
+    // Check if selected node is a ComponentSet or Component
+    if (selected.type === 'COMPONENT_SET') {
+      sendComponentData(selected);
+    } else if (selected.type === 'COMPONENT') {
+      // If it's a single component, check if it has a parent ComponentSet
+      if (selected.parent && selected.parent.type === 'COMPONENT_SET') {
+        sendComponentData(selected.parent as ComponentSetNode);
+      } else {
+        // Single component without variants
+        sendSingleComponentData(selected);
+      }
+    } else if (selected.type === 'INSTANCE') {
+      // If instance is selected, get its main component
+      const mainComponent = selected.mainComponent;
+      if (mainComponent && mainComponent.parent && mainComponent.parent.type === 'COMPONENT_SET') {
+        sendComponentData(mainComponent.parent as ComponentSetNode);
+      } else if (mainComponent) {
+        sendSingleComponentData(mainComponent);
+      }
+    } else {
+      // Not a component-related selection
+      figma.ui.postMessage({
+        type: 'selection-cleared'
+      });
+    }
+  } else {
+    // No selection or multiple selection
+    figma.ui.postMessage({
+      type: 'selection-cleared'
+    });
+  }
+});
+
+// Helper function to send ComponentSet data
+function sendComponentData(componentSet: ComponentSetNode) {
+  const properties: ComponentProperty[] = [];
+  
+  // Extract all component properties
+  for (const [propertyName, property] of Object.entries(componentSet.componentPropertyDefinitions)) {
+    if (property.type === 'VARIANT') {
+      properties.push({
+        name: propertyName,
+        type: 'VARIANT',
+        values: property.variantOptions || []
+      });
+    } else if (property.type === 'BOOLEAN') {
+      properties.push({
+        name: propertyName,
+        type: 'BOOLEAN',
+        values: ['true', 'false']
+      });
+    }
+  }
+  
+  // Add exposed instance properties
+  const exposedProperties = getExposedInstanceProperties(componentSet);
+  properties.push(...exposedProperties);
+  
+  figma.ui.postMessage({
+    type: 'component-selected',
+    data: {
+      id: componentSet.id,
+      name: componentSet.name,
+      properties
+    }
+  });
+}
+
+// Helper function to send single Component data
+function sendSingleComponentData(component: ComponentNode) {
+  const properties: ComponentProperty[] = [];
+  
+  // Get exposed instance properties for single component
+  const exposedProperties = getExposedInstanceProperties(component);
+  properties.push(...exposedProperties);
+  
+  figma.ui.postMessage({
+    type: 'component-selected',
+    data: {
+      id: component.id,
+      name: component.name,
+      properties
+    }
+  });
+}
+
 interface ComponentProperty {
   name: string;
   type: 'VARIANT' | 'BOOLEAN' | 'EXPOSED_INSTANCE';
@@ -752,14 +844,7 @@ async function createInstancesTable(componentId: string, combinations: Record<st
 }
 
 figma.ui.onmessage = async (msg) => {
-  if (msg.type === 'get-components') {
-    const componentSets = findComponentSets();
-    figma.ui.postMessage({
-      type: 'components-data',
-      data: componentSets,
-    });
-  }
-
+  
  if (msg.type === 'generate-table') {
   const { componentId, spacing, enabledProperties } = msg;
   const componentSet = figma.getNodeById(componentId) as ComponentSetNode;
