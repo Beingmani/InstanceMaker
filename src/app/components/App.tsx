@@ -24,6 +24,7 @@ const App: React.FC = () => {
   const [previewData, setPreviewData] = useState<any[]>([]);
   const [includeBooleans, setIncludeBooleans] = useState<boolean>(true);
   const [includeExposedInstances, setIncludeExposedInstances] = useState<boolean>(false);
+  const [toggledProperties, setToggledProperties] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     // Request component data when the plugin loads
@@ -40,36 +41,24 @@ const App: React.FC = () => {
   }, []);
 
   // Generate preview data for the selected component
-  useEffect(() => {
-    if (selectedComponent) {
-      const component = components.find((c) => c.id === selectedComponent);
-      if (component && component.properties.length > 0) {
-        let filteredProperties = component.properties;
-
-        if (!includeBooleans) {
-          filteredProperties = filteredProperties.filter((prop) => prop.type !== 'BOOLEAN');
-        }
-
-        if (!includeExposedInstances) {
-          filteredProperties = filteredProperties.filter((prop) => prop.type !== 'EXPOSED_INSTANCE');
-        }
-
-        if (filteredProperties.length > 0) {
-          const combinations = generateCombinations(filteredProperties);
-          const tableData = combinations.map((combo, index) => ({
-            key: index,
-            ...combo,
-            preview: `Instance ${index + 1}`,
-          }));
-          setPreviewData(tableData);
-        } else {
-          setPreviewData([]);
-        }
-      } else {
-        setPreviewData([]);
-      }
+useEffect(() => {
+  if (selectedComponent) {
+    const component = components.find(c => c.id === selectedComponent);
+    if (component) {
+      const initialToggles: Record<string, boolean> = {};
+      component.properties.forEach(prop => {
+        // Only include properties that pass the global filters
+        const shouldInclude = 
+          (prop.type === 'VARIANT') ||
+          (prop.type === 'BOOLEAN' && includeBooleans) ||
+          (prop.type === 'EXPOSED_INSTANCE' && includeExposedInstances);
+        
+        initialToggles[prop.name] = shouldInclude;
+      });
+      setToggledProperties(initialToggles);
     }
-  }, [selectedComponent, components, includeBooleans, includeExposedInstances]);
+  }
+}, [selectedComponent, components, includeBooleans, includeExposedInstances]);
 
   // Generate combinations function
   const generateCombinations = (properties: ComponentProperty[]): Record<string, string>[] => {
@@ -102,22 +91,51 @@ const App: React.FC = () => {
     return combinations;
   };
 
-  const handleGenerate = () => {
-    if (selectedComponent) {
-      parent.postMessage(
-        {
-          pluginMessage: {
-            type: 'generate-table',
-            componentId: selectedComponent,
-            spacing: spacing,
-            includeBooleans: includeBooleans,
-            includeExposedInstances: includeExposedInstances,
-          },
-        },
-        '*'
-      );
-    }
-  };
+  const calculateCombinations = (): number => {
+  if (!selectedComponent) return 0;
+  
+  const component = components.find(c => c.id === selectedComponent);
+  if (!component) return 0;
+  
+  const enabledProperties = component.properties.filter(prop => {
+    // Apply global filters first
+    if (prop.type === 'BOOLEAN' && !includeBooleans) return false;
+    if (prop.type === 'EXPOSED_INSTANCE' && !includeExposedInstances) return false;
+    
+    // Then apply individual toggles
+    return toggledProperties[prop.name];
+  });
+  
+  if (enabledProperties.length === 0) return 0;
+  
+  return enabledProperties.reduce((total, prop) => total * prop.values.length, 1);
+};
+
+ const handleGenerate = () => {
+  if (selectedComponent) {
+    const component = components.find(c => c.id === selectedComponent);
+    if (!component) return;
+    
+    const enabledProperties = component.properties
+      .filter(prop => {
+        // Apply global filters
+        if (prop.type === 'BOOLEAN' && !includeBooleans) return false;
+        if (prop.type === 'EXPOSED_INSTANCE' && !includeExposedInstances) return false;
+        // Apply individual toggles
+        return toggledProperties[prop.name];
+      })
+      .map(prop => prop.name);
+    
+    parent.postMessage({
+      pluginMessage: {
+        type: 'generate-table',
+        componentId: selectedComponent,
+        spacing: spacing,
+        enabledProperties: enabledProperties
+      }
+    }, '*');
+  }
+};
 
   const handleCancel = () => {
     parent.postMessage({ pluginMessage: { type: 'cancel' } }, '*');
@@ -231,42 +249,67 @@ const App: React.FC = () => {
               </Select>
             </div>
 
-            {selectedComponentData && (
-              <div>
-                <Text strong>Component Properties:</Text>
-                <div style={{ marginTop: '8px' }}>
-                  {filteredProperties.map((property) => (
-                    <div key={property.name} style={{ marginBottom: '8px' }}>
-                      <Text code>{property.name}</Text>
-                      <Tag size="small" style={{ marginLeft: '8px' }}>
-                        {property.type === 'EXPOSED_INSTANCE' ? 'exposed' : property.type.toLowerCase()}
-                      </Tag>
-                      : {property.values.join(', ')}
-                    </div>
-                  ))}
-                  {!includeBooleans && selectedComponentData.properties.some((p) => p.type === 'BOOLEAN') && (
-                    <div style={{ marginTop: '8px', padding: '8px', backgroundColor: '#f0f0f0', borderRadius: '4px' }}>
-                      <Text type="secondary" style={{ fontSize: '12px' }}>
-                        {selectedComponentData.properties.filter((p) => p.type === 'BOOLEAN').length} boolean properties
-                        hidden
-                      </Text>
-                    </div>
-                  )}
-                  {!includeExposedInstances &&
-                    selectedComponentData.properties.some((p) => p.type === 'EXPOSED_INSTANCE') && (
-                      <div
-                        style={{ marginTop: '8px', padding: '8px', backgroundColor: '#f0f0f0', borderRadius: '4px' }}
-                      >
-                        <Text type="secondary" style={{ fontSize: '12px' }}>
-                          {selectedComponentData.properties.filter((p) => p.type === 'EXPOSED_INSTANCE').length} exposed
-                          instance properties hidden
-                        </Text>
-                      </div>
-                    )}
-                </div>
-                <Text type="secondary">Total combinations: {previewData.length}</Text>
-              </div>
-            )}
+           {selectedComponentData && (
+  <div>
+    <Text strong>Component Properties - Toggle what to include:</Text>
+    <div style={{ marginTop: '12px' }}>
+      {selectedComponentData.properties
+        .filter(property => {
+          // Apply global filters first
+          if (property.type === 'BOOLEAN' && !includeBooleans) return false;
+          if (property.type === 'EXPOSED_INSTANCE' && !includeExposedInstances) return false;
+          return true;
+        })
+        .map(property => (
+          <div key={property.name} style={{ 
+            marginBottom: '12px', 
+            padding: '8px', 
+            border: '1px solid #d9d9d9', 
+            borderRadius: '4px',
+            backgroundColor: toggledProperties[property.name] ? '#f6ffed' : '#fff2f0'
+          }}>
+            <Space align="center">
+              <Switch 
+                checked={toggledProperties[property.name] || false}
+                onChange={(checked) => setToggledProperties(prev => ({
+                  ...prev,
+                  [property.name]: checked
+                }))}
+                size="small"
+              />
+              <Text code>{property.name}</Text>
+              <Tag size="small" color={
+                property.type === 'VARIANT' ? 'blue' :
+                property.type === 'BOOLEAN' ? 'green' : 'purple'
+              }>
+                {property.type === 'EXPOSED_INSTANCE' ? 'exposed' : property.type.toLowerCase()}
+              </Tag>
+              <Text type="secondary">: {property.values.join(', ')}</Text>
+            </Space>
+          </div>
+        ))}
+      
+      {/* Show hidden properties info */}
+      {!includeBooleans && selectedComponentData.properties.some(p => p.type === 'BOOLEAN') && (
+        <div style={{ marginTop: '8px', padding: '8px', backgroundColor: '#f0f0f0', borderRadius: '4px' }}>
+          <Text type="secondary" style={{ fontSize: '12px' }}>
+            {selectedComponentData.properties.filter(p => p.type === 'BOOLEAN').length} boolean properties hidden by global setting
+          </Text>
+        </div>
+      )}
+      {!includeExposedInstances && selectedComponentData.properties.some(p => p.type === 'EXPOSED_INSTANCE') && (
+        <div style={{ marginTop: '8px', padding: '8px', backgroundColor: '#f0f0f0', borderRadius: '4px' }}>
+          <Text type="secondary" style={{ fontSize: '12px' }}>
+            {selectedComponentData.properties.filter(p => p.type === 'EXPOSED_INSTANCE').length} exposed instance properties hidden by global setting
+          </Text>
+        </div>
+      )}
+    </div>
+    <Text type="secondary">
+      Total combinations: {calculateCombinations()}
+    </Text>
+  </div>
+)}
 
             <div>
               <Text strong>Spacing between instances</Text>

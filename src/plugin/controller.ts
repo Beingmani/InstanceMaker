@@ -760,43 +760,45 @@ figma.ui.onmessage = async (msg) => {
     });
   }
 
-  if (msg.type === 'generate-table') {
-    const { componentId, spacing, includeBooleans, includeExposedInstances } = msg;
-    const componentSet = figma.getNodeById(componentId) as ComponentSetNode;
-
-    if (componentSet) {
-      const properties: ComponentProperty[] = [];
-
-      // Extract component properties based on user preferences
-      for (const [propertyName, property] of Object.entries(componentSet.componentPropertyDefinitions)) {
-        if (property.type === 'VARIANT') {
-          properties.push({
-            name: propertyName,
-            type: 'VARIANT',
-            values: property.variantOptions || [],
-          });
-        } else if (property.type === 'BOOLEAN' && includeBooleans) {
-          properties.push({
-            name: propertyName,
-            type: 'BOOLEAN',
-            values: ['true', 'false'],
-          });
-        }
+ if (msg.type === 'generate-table') {
+  const { componentId, spacing, enabledProperties } = msg;
+  const componentSet = figma.getNodeById(componentId) as ComponentSetNode;
+  
+  if (componentSet) {
+    const allProperties: ComponentProperty[] = [];
+    
+    // Extract all component properties
+    for (const [propertyName, property] of Object.entries(componentSet.componentPropertyDefinitions)) {
+      if (property.type === 'VARIANT') {
+        allProperties.push({
+          name: propertyName,
+          type: 'VARIANT',
+          values: property.variantOptions || []
+        });
+      } else if (property.type === 'BOOLEAN') {
+        allProperties.push({
+          name: propertyName,
+          type: 'BOOLEAN',
+          values: ['true', 'false']
+        });
       }
-
-      // Add exposed instance properties if enabled
-      if (includeExposedInstances) {
-        const exposedProperties = getExposedInstanceProperties(componentSet);
-        properties.push(...exposedProperties);
-      }
-
-      const combinations = generateCombinations(properties);
-      await createInstancesTable(componentId, combinations, spacing);
     }
-
-    figma.closePlugin();
+    
+    // Add exposed instance properties
+    const exposedProperties = getExposedInstanceProperties(componentSet);
+    allProperties.push(...exposedProperties);
+    
+    // Filter to only enabled properties
+    const properties = allProperties.filter(prop => 
+      enabledProperties.includes(prop.name)
+    );
+    
+    const combinations = generateCombinations(properties);
+    await createInstancesTable(componentId, combinations, spacing);
   }
-
+  
+  figma.closePlugin();
+}
   if (msg.type === 'cancel') {
     figma.closePlugin();
   }
