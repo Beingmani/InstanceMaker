@@ -95,6 +95,10 @@ const resetUsageCount = async () => {
     isPaid: figma.payments.status.type === "PAID",
   });
 };
+const cleanPropertyName = (name) => {
+  return name.split('#')[0];
+};
+
 
 // Add this function for development testing
 const toggleDevPaymentStatus = () => {
@@ -416,8 +420,20 @@ async function createInstancesTable(
   combinations: Record<string, string>[],
   spacing: number = 20
 ) {
-  const componentSet = figma.getNodeById(componentId) as ComponentSetNode;
-  if (!componentSet) return;
+    const node = figma.getNodeById(componentId);
+  
+  let componentSet: ComponentSetNode | null = null;
+  let singleComponent: ComponentNode | null = null;
+  
+  if (node?.type === "COMPONENT_SET") {
+    componentSet = node as ComponentSetNode;
+  } else if (node?.type === "COMPONENT") {
+    singleComponent = node as ComponentNode;
+  } else {
+    console.error("Selected node is not a component or component set");
+    figma.notify("Please select a valid component or component set");
+    return;
+  }
 
   const instances: InstanceNode[] = [];
 
@@ -436,54 +452,71 @@ async function createInstancesTable(
   }
 
   // Create all instances
+ // Replace the variant finding logic with this:
+// ✅ NEW - Create all instances
   combinations.forEach((combination) => {
-    const variantProps: Record<string, string> = {};
-    const booleanProps: Record<string, boolean> = {};
-    const exposedInstanceProps: Record<string, string> = {};
+    let sourceComponent: ComponentNode;
+    
+    if (singleComponent) {
+      // For single components, always use that component
+      sourceComponent = singleComponent;
+    } else if (componentSet) {
+      // For component sets, find the right variant
+      const variantProps: Record<string, string> = {};
+      const booleanProps: Record<string, boolean> = {};
 
-    Object.entries(combination).forEach(([key, value]) => {
-      const propertyDef = componentSet.componentPropertyDefinitions[key];
-      if (propertyDef?.type === "VARIANT") {
-        variantProps[key] = value;
-      } else if (propertyDef?.type === "BOOLEAN") {
-        booleanProps[key] = value === "true";
-      } else {
-        exposedInstanceProps[key] = value;
-      }
-    });
-
-    const variant = componentSet.children.find((child) => {
-      if (child.type !== "COMPONENT") return false;
-      const componentVariantProps = child.variantProperties;
-      if (!componentVariantProps) return false;
-
-      return Object.entries(variantProps).every(
-        ([key, value]) => componentVariantProps[key] === value
-      );
-    }) as ComponentNode;
-
-    if (variant) {
-      const instance = variant.createInstance();
-
-      Object.entries(booleanProps).forEach(([key, value]) => {
-        try {
-          instance.setProperties({ [key]: value });
-        } catch (error) {
-          console.warn(`Could not set boolean property ${key}:`, error);
+      Object.entries(combination).forEach(([key, value]) => {
+        const propertyDef = componentSet.componentPropertyDefinitions[key];
+        if (propertyDef?.type === "VARIANT") {
+          variantProps[key] = value;
+        } else if (propertyDef?.type === "BOOLEAN") {
+          booleanProps[key] = value === "true";
         }
       });
 
-      if (
-        Object.keys(exposedInstanceProps).length > 0 &&
-        typeof applyExposedInstanceProperties === "function"
-      ) {
-        applyExposedInstanceProperties(instance, exposedInstanceProps);
+      // Handle case with no variant properties (only exposed instances)
+      if (Object.keys(variantProps).length === 0) {
+        sourceComponent = componentSet.children.find((child) => child.type === "COMPONENT") as ComponentNode;
+      } else {
+        sourceComponent = componentSet.children.find((child) => {
+          if (child.type !== "COMPONENT") return false;
+          const componentVariantProps = child.variantProperties;
+          if (!componentVariantProps) return false;
+
+          return Object.entries(variantProps).every(
+            ([key, value]) => componentVariantProps[key] === value
+          );
+        }) as ComponentNode;
+      }
+    }
+
+    if (sourceComponent) {
+      const instance = sourceComponent.createInstance();
+
+      // Apply properties based on component type
+      if (singleComponent) {
+        // For single components, all properties are exposed instance properties
+        applyExposedInstanceProperties(instance, combination);
+      } else if (componentSet) {
+        // For component sets, handle different property types
+        Object.entries(combination).forEach(([key, value]) => {
+          const propertyDef = componentSet.componentPropertyDefinitions[key];
+          if (propertyDef?.type === "BOOLEAN") {
+            try {
+              instance.setProperties({ [key]: value === "true" });
+            } catch (error) {
+              console.warn(`Could not set boolean property ${key}:`, error);
+            }
+          } else if (!propertyDef) {
+            // This is an exposed instance property
+            applyExposedInstanceProperties(instance, { [key]: value });
+          }
+        });
       }
 
       instances.push(instance);
     }
   });
-
   if (instances.length === 0) return;
 
   // Analyze properties dynamically
@@ -632,8 +665,8 @@ async function createInstancesTable(
   const totalHeight = dynamicHeaderHeight + gridHeight + 48;
 
   // Create main container
-  const mainContainer = figma.createFrame();
-  mainContainer.name = `${componentSet.name} - All Variants (Optimal Layout)`;
+const mainContainer = figma.createFrame();
+  mainContainer.name = `${singleComponent?.name || componentSet?.name || "Component"} - All Variants`;  // ✅ NEW
   mainContainer.fills = [
     { type: "SOLID", color: { r: 0.98, g: 0.98, b: 0.98 } },
   ];
@@ -685,8 +718,9 @@ async function createInstancesTable(
 
         const spanBox = figma.createFrame();
         spanBox.name = `Col ${prop}: ${span.value}`;
-        spanBox.x = startX;
-        spanBox.y = yLevel;
+spanBox.x = startX ;
+spanBox.y = yLevel;
+      
         spanBox.resize(width, 35);
         spanBox.fills = [
           {
@@ -699,7 +733,7 @@ async function createInstancesTable(
         spanBox.strokes = [
           { type: "SOLID", color: { r: 0.85, g: 0.85, b: 0.9 } },
         ];
-        spanBox.strokeWeight = 1;
+        spanBox.strokeWeight = 0.5;
 
         foundationContainer.appendChild(spanBox);
       });
@@ -742,8 +776,8 @@ async function createInstancesTable(
 
         const spanBox = figma.createFrame();
         spanBox.name = `Row ${prop}: ${span.value}`;
-        spanBox.x = xLevel;
-        spanBox.y = startY;
+spanBox.x = xLevel ;
+spanBox.y = startY ;
         spanBox.resize(55, height);
         spanBox.fills = [
           {
@@ -756,7 +790,7 @@ async function createInstancesTable(
         spanBox.strokes = [
           { type: "SOLID", color: { r: 0.85, g: 0.85, b: 0.9 } },
         ];
-        spanBox.strokeWeight = 1;
+        spanBox.strokeWeight = 0.5;
 
         foundationContainer.appendChild(spanBox);
       });
@@ -774,30 +808,31 @@ async function createInstancesTable(
   gridContainer.resize(gridWidth, gridHeight);
   gridContainer.fills = [];
   gridContainer.strokeAlign = "INSIDE";
-  gridContainer.strokes = [{ type: "SOLID", color: { r: 0.7, g: 0.4, b: 1 } }];
-  gridContainer.strokeWeight = 2;
-  gridContainer.dashPattern = [8, 4];
   gridContainer.cornerRadius = 8;
 
-  // Create grid cells
-  for (let row = 0; row < rows; row++) {
-    for (let col = 0; col < cols; col++) {
-      const cell = figma.createFrame();
-      cell.name = `Cell ${row}-${col}`;
-      cell.x = dynamicLabelWidth + col * cellSize;
-      cell.y = dynamicHeaderHeight + row * cellSize;
-      cell.resize(cellSize, cellSize);
-      cell.fills = [
-        { type: "SOLID", color: { r: 1, g: 1, b: 1 }, opacity: 0.8 },
-      ];
-      cell.strokeAlign = "INSIDE";
-      cell.strokes = [{ type: "SOLID", color: { r: 0.9, g: 0.9, b: 0.95 } }];
-      cell.strokeWeight = 1;
-      cell.cornerRadius = 4;
+  // ✅ Create grid cells with offset positioning to prevent border overlap
+for (let row = 0; row < rows; row++) {
+  for (let col = 0; col < cols; col++) {
+    const cell = figma.createFrame();
+    cell.name = `Cell ${row}-${col}`;
+    
+    // ✅ Offset cells by -1px to overlap borders (not double them)
+    cell.x = dynamicLabelWidth + col * cellSize - Math.max(0, col - 0);
+    cell.y = dynamicHeaderHeight + row * cellSize - Math.max(0, row - 0);
+    
+    cell.resize(cellSize, cellSize);
+    cell.fills = [
+      { type: "SOLID", color: { r: 1, g: 1, b: 1 }, opacity: 0.8 },
+    ];
+    cell.strokeAlign = "INSIDE";
+    cell.strokes = [{ type: "SOLID", color: { r: 0.7, g: 0.4, b: 1 } }];
+    cell.strokeWeight = 1;
+    cell.dashPattern = [8, 4];
+    cell.cornerRadius = 4;
 
-      foundationContainer.appendChild(cell);
-    }
+    foundationContainer.appendChild(cell);
   }
+}
 
   foundationContainer.appendChild(gridContainer);
   mainContainer.appendChild(foundationContainer);
@@ -873,7 +908,7 @@ async function createInstancesTable(
       const centerX = startX + width / 2;
 
       // Property name (small, gray)
-      const propLabel = createText(prop, 9, false, { r: 0.6, g: 0.6, b: 0.6 });
+      const propLabel = createText(cleanPropertyName(prop), 9, false, { r: 0.6, g: 0.6, b: 0.6 });
       propLabel.x = centerX - propLabel.width / 2;
       propLabel.y = yLevel + 5;
       textLabelsLayer.appendChild(propLabel);
@@ -916,7 +951,7 @@ async function createInstancesTable(
       const centerY = startY + height / 2;
 
       // Property name (small, gray)
-      const propLabel = createText(prop, 8, false, { r: 0.6, g: 0.6, b: 0.6 });
+      const propLabel = createText(cleanPropertyName(prop), 8, false, { r: 0.6, g: 0.6, b: 0.6 });
       propLabel.x = xLevel + 27 - propLabel.width / 2;
       propLabel.y = centerY - 10;
       textLabelsLayer.appendChild(propLabel);
@@ -936,8 +971,35 @@ async function createInstancesTable(
   mainContainer.appendChild(textLabelsLayer);
 
   // Position and show
-  mainContainer.x = 0;
-  mainContainer.y = 0;
+// ✅ NEW - Smart positioning next to selected component
+  const selectedNode = singleComponent || (componentSet?.children[0] as ComponentNode);
+  
+  if (selectedNode) {
+    // Place table to the right of the selected component with 100px spacing
+    mainContainer.x = selectedNode.x + selectedNode.width + 100;
+    mainContainer.y = selectedNode.y;
+    
+    // If table would go off-screen to the right, place it to the left instead
+    const viewportBounds = figma.viewport.bounds;
+    const tableRightEdge = mainContainer.x + mainContainer.width;
+    
+    if (tableRightEdge > viewportBounds.x + viewportBounds.width) {
+      // Place to the left instead
+      mainContainer.x = selectedNode.x - mainContainer.width - 100;
+      
+      // If still off-screen, place below
+      if (mainContainer.x < viewportBounds.x) {
+        mainContainer.x = selectedNode.x;
+        mainContainer.y = selectedNode.y + selectedNode.height + 100;
+      }
+    }
+  } else {
+    // Fallback to center of viewport
+    const viewportCenter = figma.viewport.center;
+    mainContainer.x = viewportCenter.x - mainContainer.width / 2;
+    mainContainer.y = viewportCenter.y - mainContainer.height / 2;
+  }
+  
   figma.viewport.scrollAndZoomIntoView([mainContainer]);
 
   return mainContainer;
@@ -972,33 +1034,43 @@ figma.ui.onmessage = async (msg) => {
     }
     // END PAYMENT CHECK
 
-    const componentSet = figma.getNodeById(componentId) as ComponentSetNode;
-
-    if (componentSet) {
+    // ✅ NEW - Handle both component types
+    const node = figma.getNodeById(componentId);
+    
+    if (node && (node.type === "COMPONENT_SET" || node.type === "COMPONENT")) {
       const allProperties: ComponentProperty[] = [];
 
-      // Extract all component properties
-      for (const [propertyName, property] of Object.entries(
-        componentSet.componentPropertyDefinitions
-      )) {
-        if (property.type === "VARIANT") {
-          allProperties.push({
-            name: propertyName,
-            type: "VARIANT",
-            values: property.variantOptions || [],
-          });
-        } else if (property.type === "BOOLEAN") {
-          allProperties.push({
-            name: propertyName,
-            type: "BOOLEAN",
-            values: ["true", "false"],
-          });
+      if (node.type === "COMPONENT_SET") {
+        const componentSet = node as ComponentSetNode;
+        
+        // Extract component set properties
+        for (const [propertyName, property] of Object.entries(
+          componentSet.componentPropertyDefinitions
+        )) {
+          if (property.type === "VARIANT") {
+            allProperties.push({
+              name: propertyName,
+              type: "VARIANT",
+              values: property.variantOptions || [],
+            });
+          } else if (property.type === "BOOLEAN") {
+            allProperties.push({
+              name: propertyName,
+              type: "BOOLEAN",
+              values: ["true", "false"],
+            });
+          }
         }
-      }
 
-      // Add exposed instance properties
-      const exposedProperties = getExposedInstanceProperties(componentSet);
-      allProperties.push(...exposedProperties);
+        // Add exposed instance properties
+        const exposedProperties = getExposedInstanceProperties(componentSet);
+        allProperties.push(...exposedProperties);
+      } else {
+        // For single components, only get exposed instance properties
+        const component = node as ComponentNode;
+        const exposedProperties = getExposedInstanceProperties(component);
+        allProperties.push(...exposedProperties);
+      }
 
       // Filter to only enabled properties
       const properties = allProperties.filter((prop) =>

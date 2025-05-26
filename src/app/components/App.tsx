@@ -388,14 +388,14 @@ const cleanPropertyName = (name) => {
             initiatePayment={initiatePayment}
           />
         </div>
-        {/* <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
+        <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
           <Button size="small" onClick={toggleDevPaymentStatus}>
             Toggle Payment
           </Button>
           <Button size="small" onClick={resetUsageCount}>
             Reset Usage
           </Button>
-        </div> */}
+        </div>
 
        
 
@@ -418,60 +418,78 @@ const cleanPropertyName = (name) => {
           textAlign: "center",
         }}
       >
-         {/* Hidden properties info in top-left corner */}
-  {selectedComponent && (
+
+
+{selectedComponent && (() => {
+  const totalBooleans = selectedComponentData?.properties.filter(p => p.type === "BOOLEAN").length || 0;
+  const totalExposed = selectedComponentData?.properties.filter(p => p.type === "EXPOSED_INSTANCE").length || 0;
+  
+  const hiddenBooleans = !includeBooleans ? totalBooleans : 0;
+  const hiddenExposed = !includeExposedInstances ? totalExposed : 0;
+  
+  const parts = [];
+  const statusParts = [];
+  
+  // ✅ NEW - Show what's hidden
+  if (hiddenBooleans > 0) parts.push(`${hiddenBooleans} Boolean`);
+  if (hiddenExposed > 0) parts.push(`${hiddenExposed} Nested`);
+  
+  // ✅ NEW - Show what doesn't exist
+  if (totalBooleans === 0 && !includeBooleans) statusParts.push("No Boolean ");
+  if (totalExposed === 0 && !includeExposedInstances) statusParts.push("No Nested ");
+  
+  // Combine hidden and missing info
+  const allParts = [...parts];
+  if (parts.length > 0 && statusParts.length > 0) {
+    allParts.push(`(${statusParts.join(', ')}  Available)`);
+  } else if (parts.length === 0 && statusParts.length > 0) {
+    allParts.push(`${statusParts.join(', ')}  Available`);
+  }
+  
+  // Determine tag color and message
+  let color = "orange";
+  let message = "";
+  
+  if (parts.length > 0) {
+    // Something is hidden
+    color = "orange";
+    message = `${parts.join(', ')} Hidden`;
+    if (statusParts.length > 0) {
+      message += ` • ${statusParts.join(', ')}  Available`;
+    }
+  } else if (statusParts.length > 0) {
+    // Nothing hidden, but some types don't exist
+    color = "cyan";
+    message = `${statusParts.join(', ')} Properties Available`;
+  }
+  
+  return message && (
     <div
       style={{
         position: "absolute",
         top: "12px",
         left: "12px",
         zIndex: 1,
-        display: "flex",
-        flexDirection: "column",
-        gap: "4px",
       }}
     >
-      {/* Boolean properties hidden info */}
-      {!includeBooleans &&
-        selectedComponentData?.properties.some(
-          (p) => p.type === "BOOLEAN"
-        ) && (
-          <Tag color="orange" size="small">
-            {
-              selectedComponentData.properties.filter(
-                (p) => p.type === "BOOLEAN"
-              ).length
-            } boolean hidden
-          </Tag>
-        )}
-      
-      {/* Exposed instance properties hidden info */}
-      {!includeExposedInstances &&
-        selectedComponentData?.properties.some(
-          (p) => p.type === "EXPOSED_INSTANCE"
-        ) && (
-          <Tag color="orange" size="small">
-            {
-              selectedComponentData.properties.filter(
-                (p) => p.type === "EXPOSED_INSTANCE"
-              ).length
-            } exposed hidden
-          </Tag>
-        )}
+      <Tag color={color} size="small">
+        {message}
+      </Tag>
     </div>
-  )}
+  );
+})()}
         
 {selectedComponent && (
     <div
       style={{
         position: "absolute",
-        top: "12px",
-        right: "12px",
+        bottom: "12px",
+        left: "12px",
         zIndex: 1,
       }}
     >
       <Tag color="blue">
-        {selectedComponent.properties.length} properties
+       Found {selectedComponent.properties.length} Properties
       </Tag>
     </div>
   )}
@@ -486,7 +504,7 @@ const cleanPropertyName = (name) => {
       }}
     >
       <Tag color="green">
-        {formatNumber(calculateCombinations())} combinations
+        Total {formatNumber(calculateCombinations())} Combinations
       </Tag>
     </div>
   )}
@@ -503,9 +521,9 @@ const cleanPropertyName = (name) => {
     </div>
   ) : (
     <div style={{ padding: "20px" }}>
-      {/* <Text style={{ fontSize: "14px", color: "#52c41a" }}>
+      <Text style={{ fontSize: "14px", color: "#52c41a" }}>
         Selected Component
-      </Text> */}
+      </Text>
       <br />
       <Text code style={{ fontSize: "16px", marginTop: "8px" }}>
         {selectedComponent.name}
@@ -607,75 +625,87 @@ const cleanPropertyName = (name) => {
 
 
 {selectedComponentData ? (
-  
-    <Space direction="vertical" size={2} style={{ width: "100%" }}>
-    {selectedComponentData && (
-  <Card style={{ marginTop: "16px"}}  bodyStyle={{ padding: "4px 2px" }}>
-    <Space direction="vertical" size={2} style={{ width: "100%" }}>
-      {selectedComponentData.properties
-        .filter((property) => {
-          // Apply global filters first
-          if (property.type === "BOOLEAN" && !includeBooleans)
-            return false;
-          if (
-            property.type === "EXPOSED_INSTANCE" &&
-            !includeExposedInstances
-          )
-            return false;
-          return true;
-        })
-        .map((property) => (
-          <div
-            key={property.name}
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              padding: "8px 12px",
-            }}
-          >
-            {/* Left side - Icon, Property name and type tag */}
-            <Space align="center" size={2}>
-              {/* Property type icon */}
-           {property.type === "VARIANT" && <VariantIcon  />}
-{property.type === "BOOLEAN" && <BooleanIcon  />}
-{property.type === "EXPOSED_INSTANCE" && <NestedIcon />}
-              
-             <Text code>{cleanPropertyName(property.name)}</Text>
-              <Tag
-                size="small"
-                color={
-                  property.type === "VARIANT"
-                    ? "blue"
-                    : property.type === "BOOLEAN"
-                    ? "green"
-                    : "purple"
-                }
-              >
-                {property.type === "EXPOSED_INSTANCE"
-                  ? "Nested"
-                  : property.type.toLowerCase()}
-              </Tag>
-            </Space>
+  <Space direction="vertical" size={2} style={{ width: "100%" }}>
+    {(() => {
+      // Filter properties based on global settings
+      const filteredProperties = selectedComponentData.properties.filter((property) => {
+        if (property.type === "BOOLEAN" && !includeBooleans) return false;
+        if (property.type === "EXPOSED_INSTANCE" && !includeExposedInstances) return false;
+        return true;
+      });
 
-            {/* Right side - Toggle switch */}
-            <Switch
-              checked={toggledProperties[property.name] || false}
-              onChange={(checked) =>
-                setToggledProperties((prev) => ({
-                  ...prev,
-                  [property.name]: checked,
-                }))
-              }
-              size="small"
-            />
-          </div>
-        ))}
-    </Space>
-  </Card>
-)}
-    </Space>
- 
+      // ✅ NEW - Check if there are any properties to show
+      if (filteredProperties.length === 0) {
+        return (
+          <Card style={{ marginTop: "16px" }}>
+            <div style={{ textAlign: "center", padding: "20px" }}>
+              <Text type="secondary" style={{ fontSize: "14px" }}>
+                {selectedComponentData.properties.length === 0 
+                  ? "This component has no configurable properties"
+                  : "No properties match current filter settings. Try enabling Boolean or Nested Instance properties above."
+                }
+              </Text>
+            </div>
+          </Card>
+        );
+      }
+
+      // Show properties if they exist
+      return (
+        <Card style={{ marginTop: "16px"}} bodyStyle={{ padding: "4px 2px" }}>
+          <Space direction="vertical" size={2} style={{ width: "100%" }}>
+            {filteredProperties.map((property) => (
+              <div
+                key={property.name}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  padding: "8px 12px",
+                }}
+              >
+                {/* Left side - Icon, Property name and type tag */}
+                <Space align="center" size={2}>
+                  {/* Property type icon */}
+                  {property.type === "VARIANT" && <VariantIcon />}
+                  {property.type === "BOOLEAN" && <BooleanIcon />}
+                  {property.type === "EXPOSED_INSTANCE" && <NestedIcon />}
+                  
+                  <Text code>{cleanPropertyName(property.name)}</Text>
+                  <Tag
+                    size="small"
+                    color={
+                      property.type === "VARIANT"
+                        ? "blue"
+                        : property.type === "BOOLEAN"
+                        ? "green"
+                        : "purple"
+                    }
+                  >
+                    {property.type === "EXPOSED_INSTANCE"
+                      ? "Nested"
+                      : property.type.toLowerCase()}
+                  </Tag>
+                </Space>
+
+                {/* Right side - Toggle switch */}
+                <Switch
+                  checked={toggledProperties[property.name] || false}
+                  onChange={(checked) =>
+                    setToggledProperties((prev) => ({
+                      ...prev,
+                      [property.name]: checked,
+                    }))
+                  }
+                  size="small"
+                />
+              </div>
+            ))}
+          </Space>
+        </Card>
+      );
+    })()}
+  </Space>
 ) : (
   <Card style={{ marginTop: "16px" }}>
     <div style={{ textAlign: "center", padding: "12px" }}>
@@ -706,7 +736,7 @@ const cleanPropertyName = (name) => {
             position: "fixed",
             bottom: 0,
             left: 0,
-            width: "96%",
+            width: "92%",
             padding: "12px 16px",
             backgroundColor: "#fff",
             borderTop: "1px solid #eee",
@@ -717,23 +747,33 @@ const cleanPropertyName = (name) => {
           }}
         >
          <Button
-              type="primary"
-              onClick={handleGenerate}
-              disabled={
-                !selectedComponent ||
-                calculateCombinations() === 0 ||
-                (typeof usageCount === "number" &&
-                  usageCount >= FREE_USAGE_LIMIT &&
-                  !isPaid)
-              }
-              icon={<PlayCircleOutlined />}
-            >
-              {!isPaid &&
-              typeof usageCount === "number" &&
-              usageCount >= FREE_USAGE_LIMIT
-                ? "Upgrade Required"
-                : "Generate Table"}
-            </Button>
+  type="primary"
+  onClick={handleGenerate}
+  disabled={
+    !selectedComponent ||
+    calculateCombinations() === 0 ||
+    (typeof usageCount === "number" &&
+      usageCount >= FREE_USAGE_LIMIT &&
+      !isPaid)
+  }
+  icon={<PlayCircleOutlined />}
+>
+  {(() => {
+    // ✅ NEW - Better button text based on state
+    if (!isPaid && typeof usageCount === "number" && usageCount >= FREE_USAGE_LIMIT) {
+      return "Upgrade Required";
+    }
+    if (!selectedComponent) {
+      return "Select Component";
+    }
+    if (calculateCombinations() === 0) {
+      return selectedComponent?.properties.length === 0 
+        ? "No Properties Found"
+        : "Enable Properties Above";
+    }
+    return "Generate Table";
+  })()}
+</Button>
 
             {/* Add premium indicator button */}
             <Button
