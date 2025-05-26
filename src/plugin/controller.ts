@@ -1,33 +1,35 @@
 // This file handles the Figma API interactions
 
-figma.showUI(__html__, { width: 800, height: 600 });
+figma.showUI(__html__, { width: 400, height: 600 });
 
 // Add this at the top after imports
-const FREE_USAGE_LIMIT = 1;
+const FREE_USAGE_LIMIT = 10;
 
-
-
-figma.on('selectionchange', () => {
+figma.on("selectionchange", () => {
   const selection = figma.currentPage.selection;
-  
+
   if (selection.length === 1) {
     const selected = selection[0];
-    
+
     // Check if selected node is a ComponentSet or Component
-    if (selected.type === 'COMPONENT_SET') {
+    if (selected.type === "COMPONENT_SET") {
       sendComponentData(selected);
-    } else if (selected.type === 'COMPONENT') {
+    } else if (selected.type === "COMPONENT") {
       // If it's a single component, check if it has a parent ComponentSet
-      if (selected.parent && selected.parent.type === 'COMPONENT_SET') {
+      if (selected.parent && selected.parent.type === "COMPONENT_SET") {
         sendComponentData(selected.parent as ComponentSetNode);
       } else {
         // Single component without variants
         sendSingleComponentData(selected);
       }
-    } else if (selected.type === 'INSTANCE') {
+    } else if (selected.type === "INSTANCE") {
       // If instance is selected, get its main component
       const mainComponent = selected.mainComponent;
-      if (mainComponent && mainComponent.parent && mainComponent.parent.type === 'COMPONENT_SET') {
+      if (
+        mainComponent &&
+        mainComponent.parent &&
+        mainComponent.parent.type === "COMPONENT_SET"
+      ) {
         sendComponentData(mainComponent.parent as ComponentSetNode);
       } else if (mainComponent) {
         sendSingleComponentData(mainComponent);
@@ -35,13 +37,13 @@ figma.on('selectionchange', () => {
     } else {
       // Not a component-related selection
       figma.ui.postMessage({
-        type: 'selection-cleared'
+        type: "selection-cleared",
       });
     }
   } else {
     // No selection or multiple selection
     figma.ui.postMessage({
-      type: 'selection-cleared'
+      type: "selection-cleared",
     });
   }
 });
@@ -49,35 +51,37 @@ figma.on('selectionchange', () => {
 // Helper function to send ComponentSet data
 function sendComponentData(componentSet: ComponentSetNode) {
   const properties: ComponentProperty[] = [];
-  
+
   // Extract all component properties
-  for (const [propertyName, property] of Object.entries(componentSet.componentPropertyDefinitions)) {
-    if (property.type === 'VARIANT') {
+  for (const [propertyName, property] of Object.entries(
+    componentSet.componentPropertyDefinitions
+  )) {
+    if (property.type === "VARIANT") {
       properties.push({
         name: propertyName,
-        type: 'VARIANT',
-        values: property.variantOptions || []
+        type: "VARIANT",
+        values: property.variantOptions || [],
       });
-    } else if (property.type === 'BOOLEAN') {
+    } else if (property.type === "BOOLEAN") {
       properties.push({
         name: propertyName,
-        type: 'BOOLEAN',
-        values: ['true', 'false']
+        type: "BOOLEAN",
+        values: ["true", "false"],
       });
     }
   }
-  
+
   // Add exposed instance properties
   const exposedProperties = getExposedInstanceProperties(componentSet);
   properties.push(...exposedProperties);
-  
+
   figma.ui.postMessage({
-    type: 'component-selected',
+    type: "component-selected",
     data: {
       id: componentSet.id,
       name: componentSet.name,
-      properties
-    }
+      properties,
+    },
   });
 }
 
@@ -106,24 +110,24 @@ const toggleDevPaymentStatus = () => {
 // Helper function to send single Component data
 function sendSingleComponentData(component: ComponentNode) {
   const properties: ComponentProperty[] = [];
-  
+
   // Get exposed instance properties for single component
   const exposedProperties = getExposedInstanceProperties(component);
   properties.push(...exposedProperties);
-  
+
   figma.ui.postMessage({
-    type: 'component-selected',
+    type: "component-selected",
     data: {
       id: component.id,
       name: component.name,
-      properties
-    }
+      properties,
+    },
   });
 }
 
 interface ComponentProperty {
   name: string;
-  type: 'VARIANT' | 'BOOLEAN' | 'EXPOSED_INSTANCE';
+  type: "VARIANT" | "BOOLEAN" | "EXPOSED_INSTANCE";
   values: string[];
 }
 
@@ -134,7 +138,10 @@ interface ComponentInfo {
 }
 
 // Helper function to create auto-layout frames
-function createAutoLayoutFrame(name: string, direction: 'HORIZONTAL' | 'VERTICAL' = 'VERTICAL'): FrameNode {
+function createAutoLayoutFrame(
+  name: string,
+  direction: "HORIZONTAL" | "VERTICAL" = "VERTICAL"
+): FrameNode {
   const frame = figma.createFrame();
   frame.name = name;
   frame.layoutMode = direction;
@@ -144,7 +151,9 @@ function createAutoLayoutFrame(name: string, direction: 'HORIZONTAL' | 'VERTICAL
 }
 
 // Generate all combinations of component properties (variants + booleans + exposed instances)
-function generateCombinations(properties: ComponentProperty[]): Record<string, string>[] {
+function generateCombinations(
+  properties: ComponentProperty[]
+): Record<string, string>[] {
   if (properties.length === 0) return [{}];
 
   const [first, ...rest] = properties;
@@ -166,45 +175,54 @@ function generateCombinations(properties: ComponentProperty[]): Record<string, s
 
 // Find all exposed instances within a component and extract their properties
 // Find all exposed instances within a component and extract their properties
-function getExposedInstanceProperties(componentNode: ComponentNode | ComponentSetNode): ComponentProperty[] {
+function getExposedInstanceProperties(
+  componentNode: ComponentNode | ComponentSetNode
+): ComponentProperty[] {
   const exposedProperties: ComponentProperty[] = [];
 
-  function traverseForExposedInstances(node: SceneNode, path: string = '') {
-    if (node.type === 'INSTANCE' && node.isExposedInstance) {
+  function traverseForExposedInstances(node: SceneNode, path: string = "") {
+    if (node.type === "INSTANCE" && node.isExposedInstance) {
       const nodePath = path ? `${path}/${node.name}` : node.name;
 
       // Get the component properties of this exposed instance
       const instanceProperties = node.componentProperties;
       if (instanceProperties) {
-        for (const [propertyName, property] of Object.entries(instanceProperties)) {
+        for (const [propertyName, property] of Object.entries(
+          instanceProperties
+        )) {
           const fullPropertyName = `${nodePath}/${propertyName}`;
 
-          if (property.type === 'VARIANT') {
+          if (property.type === "VARIANT") {
             // Get variant options from the main component
             const mainComponent = node.mainComponent;
-            if (mainComponent && mainComponent.parent && mainComponent.parent.type === 'COMPONENT_SET') {
+            if (
+              mainComponent &&
+              mainComponent.parent &&
+              mainComponent.parent.type === "COMPONENT_SET"
+            ) {
               const componentSet = mainComponent.parent as ComponentSetNode;
-              const propertyDef = componentSet.componentPropertyDefinitions[propertyName];
-              if (propertyDef && propertyDef.type === 'VARIANT') {
+              const propertyDef =
+                componentSet.componentPropertyDefinitions[propertyName];
+              if (propertyDef && propertyDef.type === "VARIANT") {
                 exposedProperties.push({
                   name: fullPropertyName,
-                  type: 'EXPOSED_INSTANCE',
+                  type: "EXPOSED_INSTANCE",
                   values: propertyDef.variantOptions || [],
                 });
               }
             }
-          } else if (property.type === 'BOOLEAN') {
+          } else if (property.type === "BOOLEAN") {
             exposedProperties.push({
               name: fullPropertyName,
-              type: 'EXPOSED_INSTANCE',
-              values: ['true', 'false'],
+              type: "EXPOSED_INSTANCE",
+              values: ["true", "false"],
             });
-          } else if (property.type === 'TEXT') {
+          } else if (property.type === "TEXT") {
             // For text properties, use the current value
-            const currentValue = (property.value as string) || 'Default Text';
+            const currentValue = (property.value as string) || "Default Text";
             exposedProperties.push({
               name: fullPropertyName,
-              type: 'EXPOSED_INSTANCE',
+              type: "EXPOSED_INSTANCE",
               values: [currentValue],
             });
           }
@@ -212,19 +230,25 @@ function getExposedInstanceProperties(componentNode: ComponentNode | ComponentSe
       }
 
       // Continue traversing children
-      if ('children' in node) {
-        node.children.forEach((child) => traverseForExposedInstances(child, nodePath));
+      if ("children" in node) {
+        node.children.forEach((child) =>
+          traverseForExposedInstances(child, nodePath)
+        );
       }
-    } else if ('children' in node) {
+    } else if ("children" in node) {
       // Continue traversing with same path for non-exposed instances
-      node.children.forEach((child) => traverseForExposedInstances(child, path));
+      node.children.forEach((child) =>
+        traverseForExposedInstances(child, path)
+      );
     }
   }
 
-  if (componentNode.type === 'COMPONENT_SET') {
+  if (componentNode.type === "COMPONENT_SET") {
     // For component sets, only check the first component to avoid duplicates
     // since all variants should have the same exposed instance structure
-    const firstComponent = componentNode.children.find((child) => child.type === 'COMPONENT');
+    const firstComponent = componentNode.children.find(
+      (child) => child.type === "COMPONENT"
+    );
     if (firstComponent) {
       traverseForExposedInstances(firstComponent);
     }
@@ -240,22 +264,24 @@ function findComponentSets(): ComponentInfo[] {
   const componentSets: ComponentInfo[] = [];
 
   function traverse(node: SceneNode) {
-    if (node.type === 'COMPONENT_SET') {
+    if (node.type === "COMPONENT_SET") {
       const properties: ComponentProperty[] = [];
 
       // Extract all component properties (variants and booleans)
-      for (const [propertyName, property] of Object.entries(node.componentPropertyDefinitions)) {
-        if (property.type === 'VARIANT') {
+      for (const [propertyName, property] of Object.entries(
+        node.componentPropertyDefinitions
+      )) {
+        if (property.type === "VARIANT") {
           properties.push({
             name: propertyName,
-            type: 'VARIANT',
+            type: "VARIANT",
             values: property.variantOptions || [],
           });
-        } else if (property.type === 'BOOLEAN') {
+        } else if (property.type === "BOOLEAN") {
           properties.push({
             name: propertyName,
-            type: 'BOOLEAN',
-            values: ['true', 'false'],
+            type: "BOOLEAN",
+            values: ["true", "false"],
           });
         }
       }
@@ -271,7 +297,7 @@ function findComponentSets(): ComponentInfo[] {
       });
     }
 
-    if ('children' in node) {
+    if ("children" in node) {
       node.children.forEach(traverse);
     }
   }
@@ -296,7 +322,7 @@ function createBracket(
   topLine.x = x;
   topLine.y = y;
   topLine.resize(width, thickness);
-  topLine.fills = [{ type: 'SOLID', color }];
+  topLine.fills = [{ type: "SOLID", color }];
   topLine.dashPattern = [10, 5];
   brackets.push(topLine);
 
@@ -304,7 +330,7 @@ function createBracket(
   bottomLine.x = x;
   bottomLine.y = y + height - thickness;
   bottomLine.resize(width, thickness);
-  bottomLine.fills = [{ type: 'SOLID', color }];
+  bottomLine.fills = [{ type: "SOLID", color }];
   bottomLine.dashPattern = [10, 5];
   brackets.push(bottomLine);
 
@@ -312,7 +338,7 @@ function createBracket(
   leftLine.x = x;
   leftLine.y = y;
   leftLine.resize(thickness, height);
-  leftLine.fills = [{ type: 'SOLID', color }];
+  leftLine.fills = [{ type: "SOLID", color }];
   leftLine.dashPattern = [10, 5];
   brackets.push(leftLine);
 
@@ -320,7 +346,7 @@ function createBracket(
   rightLine.x = x + width - thickness;
   rightLine.y = y;
   rightLine.resize(thickness, height);
-  rightLine.fills = [{ type: 'SOLID', color }];
+  rightLine.fills = [{ type: "SOLID", color }];
   rightLine.dashPattern = [10, 5];
   brackets.push(rightLine);
 
@@ -329,43 +355,54 @@ function createBracket(
 
 // Apply exposed instance properties to an instance
 // Apply exposed instance properties to an instance
-function applyExposedInstanceProperties(instance: InstanceNode, combination: Record<string, string>) {
-  function traverseAndApply(node: SceneNode, path: string = '') {
-    if (node.type === 'INSTANCE' && node.isExposedInstance) {
+function applyExposedInstanceProperties(
+  instance: InstanceNode,
+  combination: Record<string, string>
+) {
+  function traverseAndApply(node: SceneNode, path: string = "") {
+    if (node.type === "INSTANCE" && node.isExposedInstance) {
       const nodePath = path ? `${path}/${node.name}` : node.name;
 
       // Apply properties that match this node's path
       for (const [propertyName, value] of Object.entries(combination)) {
         // Check if this property belongs to this exposed instance
-        if (propertyName.startsWith(nodePath + '/')) {
-          const actualPropertyName = propertyName.replace(nodePath + '/', '');
+        if (propertyName.startsWith(nodePath + "/")) {
+          const actualPropertyName = propertyName.replace(nodePath + "/", "");
 
           try {
             const componentProperties = node.componentProperties;
-            if (componentProperties && componentProperties[actualPropertyName]) {
+            if (
+              componentProperties &&
+              componentProperties[actualPropertyName]
+            ) {
               const property = componentProperties[actualPropertyName];
 
-              if (property.type === 'BOOLEAN') {
-                node.setProperties({ [actualPropertyName]: value === 'true' });
-              } else if (property.type === 'VARIANT') {
+              if (property.type === "BOOLEAN") {
+                node.setProperties({ [actualPropertyName]: value === "true" });
+              } else if (property.type === "VARIANT") {
                 node.setProperties({ [actualPropertyName]: value });
-              } else if (property.type === 'TEXT') {
+              } else if (property.type === "TEXT") {
                 node.setProperties({ [actualPropertyName]: value });
               }
 
-              console.log(`✅ Applied ${propertyName} = ${value} to ${node.name}`);
+              console.log(
+                `✅ Applied ${propertyName} = ${value} to ${node.name}`
+              );
             }
           } catch (error) {
-            console.warn(`❌ Could not set exposed instance property ${propertyName}:`, error);
+            console.warn(
+              `❌ Could not set exposed instance property ${propertyName}:`,
+              error
+            );
           }
         }
       }
 
       // Continue traversing children with updated path
-      if ('children' in node) {
+      if ("children" in node) {
         node.children.forEach((child) => traverseAndApply(child, nodePath));
       }
-    } else if ('children' in node) {
+    } else if ("children" in node) {
       // Continue traversing with same path for non-exposed instances
       node.children.forEach((child) => traverseAndApply(child, path));
     }
@@ -374,7 +411,11 @@ function applyExposedInstanceProperties(instance: InstanceNode, combination: Rec
   traverseAndApply(instance);
 }
 
-async function createInstancesTable(componentId: string, combinations: Record<string, string>[], spacing: number = 20) {
+async function createInstancesTable(
+  componentId: string,
+  combinations: Record<string, string>[],
+  spacing: number = 20
+) {
   const componentSet = figma.getNodeById(componentId) as ComponentSetNode;
   if (!componentSet) return;
 
@@ -382,15 +423,15 @@ async function createInstancesTable(componentId: string, combinations: Record<st
 
   // Load fonts first
   try {
-    await figma.loadFontAsync({ family: 'Inter', style: 'Regular' });
-    await figma.loadFontAsync({ family: 'Inter', style: 'Bold' });
+    await figma.loadFontAsync({ family: "Inter", style: "Regular" });
+    await figma.loadFontAsync({ family: "Inter", style: "Bold" });
   } catch {
     try {
-      await figma.loadFontAsync({ family: 'Roboto', style: 'Regular' });
-      await figma.loadFontAsync({ family: 'Roboto', style: 'Bold' });
+      await figma.loadFontAsync({ family: "Roboto", style: "Regular" });
+      await figma.loadFontAsync({ family: "Roboto", style: "Bold" });
     } catch {
-      await figma.loadFontAsync({ family: 'Arial', style: 'Regular' });
-      await figma.loadFontAsync({ family: 'Arial', style: 'Bold' });
+      await figma.loadFontAsync({ family: "Arial", style: "Regular" });
+      await figma.loadFontAsync({ family: "Arial", style: "Bold" });
     }
   }
 
@@ -402,21 +443,23 @@ async function createInstancesTable(componentId: string, combinations: Record<st
 
     Object.entries(combination).forEach(([key, value]) => {
       const propertyDef = componentSet.componentPropertyDefinitions[key];
-      if (propertyDef?.type === 'VARIANT') {
+      if (propertyDef?.type === "VARIANT") {
         variantProps[key] = value;
-      } else if (propertyDef?.type === 'BOOLEAN') {
-        booleanProps[key] = value === 'true';
+      } else if (propertyDef?.type === "BOOLEAN") {
+        booleanProps[key] = value === "true";
       } else {
         exposedInstanceProps[key] = value;
       }
     });
 
     const variant = componentSet.children.find((child) => {
-      if (child.type !== 'COMPONENT') return false;
+      if (child.type !== "COMPONENT") return false;
       const componentVariantProps = child.variantProperties;
       if (!componentVariantProps) return false;
 
-      return Object.entries(variantProps).every(([key, value]) => componentVariantProps[key] === value);
+      return Object.entries(variantProps).every(
+        ([key, value]) => componentVariantProps[key] === value
+      );
     }) as ComponentNode;
 
     if (variant) {
@@ -430,7 +473,10 @@ async function createInstancesTable(componentId: string, combinations: Record<st
         }
       });
 
-      if (Object.keys(exposedInstanceProps).length > 0 && typeof applyExposedInstanceProperties === 'function') {
+      if (
+        Object.keys(exposedInstanceProps).length > 0 &&
+        typeof applyExposedInstanceProperties === "function"
+      ) {
         applyExposedInstanceProperties(instance, exposedInstanceProps);
       }
 
@@ -464,13 +510,18 @@ async function createInstancesTable(componentId: string, combinations: Record<st
     // Try all possible ways to split properties between columns and rows
     for (let colCount = 1; colCount < propertyKeys.length; colCount++) {
       // Sort properties by value count for better distribution
-      const sortedProps = propertyKeys.sort((a, b) => propertyGroups[b].length - propertyGroups[a].length);
+      const sortedProps = propertyKeys.sort(
+        (a, b) => propertyGroups[b].length - propertyGroups[a].length
+      );
 
       const columnProps = sortedProps.slice(0, colCount);
       const rowProps = sortedProps.slice(colCount);
 
       // Calculate total columns and rows
-      const totalCols = columnProps.reduce((acc, prop) => acc * propertyGroups[prop].length, 1);
+      const totalCols = columnProps.reduce(
+        (acc, prop) => acc * propertyGroups[prop].length,
+        1
+      );
       const totalRows = Math.max(
         1,
         rowProps.reduce((acc, prop) => acc * propertyGroups[prop].length, 1)
@@ -488,7 +539,9 @@ async function createInstancesTable(componentId: string, combinations: Record<st
       const score = ratioScore * columnPenalty * rowPenalty;
 
       console.log(
-        `Trying: cols=${totalCols}, rows=${totalRows}, ratio=${aspectRatio.toFixed(2)}, score=${score.toFixed(3)}`
+        `Trying: cols=${totalCols}, rows=${totalRows}, ratio=${aspectRatio.toFixed(
+          2
+        )}, score=${score.toFixed(3)}`
       );
 
       if (score > bestScore) {
@@ -532,14 +585,16 @@ async function createInstancesTable(componentId: string, combinations: Record<st
     const text = figma.createText();
     text.characters = content;
     text.fontSize = fontSize;
-    text.fontName = { family: 'Inter', style: isBold ? 'Bold' : 'Regular' };
-    text.fills = [{ type: 'SOLID', color }];
-    text.textAutoResize = 'WIDTH_AND_HEIGHT';
+    text.fontName = { family: "Inter", style: isBold ? "Bold" : "Regular" };
+    text.fills = [{ type: "SOLID", color }];
+    text.textAutoResize = "WIDTH_AND_HEIGHT";
     return text;
   }
 
   // Generate all column combinations
-  function generateCombinations(properties: string[]): Record<string, string>[] {
+  function generateCombinations(
+    properties: string[]
+  ): Record<string, string>[] {
     if (properties.length === 0) return [{}];
 
     const [first, ...rest] = properties;
@@ -579,13 +634,15 @@ async function createInstancesTable(componentId: string, combinations: Record<st
   // Create main container
   const mainContainer = figma.createFrame();
   mainContainer.name = `${componentSet.name} - All Variants (Optimal Layout)`;
-  mainContainer.fills = [{ type: 'SOLID', color: { r: 0.98, g: 0.98, b: 0.98 } }];
+  mainContainer.fills = [
+    { type: "SOLID", color: { r: 0.98, g: 0.98, b: 0.98 } },
+  ];
   mainContainer.cornerRadius = 8;
   mainContainer.resize(totalWidth, totalHeight);
 
   // STEP 1: Create foundation with spanning headers (BOTH rows and columns)
   const foundationContainer = figma.createFrame();
-  foundationContainer.name = '🔒 Foundation (Locked)';
+  foundationContainer.name = "🔒 Foundation (Locked)";
   foundationContainer.x = 24;
   foundationContainer.y = 24;
   foundationContainer.resize(totalWidth - 48, totalHeight - 48);
@@ -633,13 +690,15 @@ async function createInstancesTable(componentId: string, combinations: Record<st
         spanBox.resize(width, 35);
         spanBox.fills = [
           {
-            type: 'SOLID',
+            type: "SOLID",
             color: { r: 0.94, g: 0.94, b: 0.98 },
           },
         ];
         spanBox.cornerRadius = 6;
-        spanBox.strokeAlign = 'INSIDE';
-        spanBox.strokes = [{ type: 'SOLID', color: { r: 0.85, g: 0.85, b: 0.9 } }];
+        spanBox.strokeAlign = "INSIDE";
+        spanBox.strokes = [
+          { type: "SOLID", color: { r: 0.85, g: 0.85, b: 0.9 } },
+        ];
         spanBox.strokeWeight = 1;
 
         foundationContainer.appendChild(spanBox);
@@ -688,13 +747,15 @@ async function createInstancesTable(componentId: string, combinations: Record<st
         spanBox.resize(55, height);
         spanBox.fills = [
           {
-            type: 'SOLID',
+            type: "SOLID",
             color: { r: 0.95, g: 0.95, b: 0.98 },
           },
         ];
         spanBox.cornerRadius = 6;
-        spanBox.strokeAlign = 'INSIDE';
-        spanBox.strokes = [{ type: 'SOLID', color: { r: 0.85, g: 0.85, b: 0.9 } }];
+        spanBox.strokeAlign = "INSIDE";
+        spanBox.strokes = [
+          { type: "SOLID", color: { r: 0.85, g: 0.85, b: 0.9 } },
+        ];
         spanBox.strokeWeight = 1;
 
         foundationContainer.appendChild(spanBox);
@@ -707,13 +768,13 @@ async function createInstancesTable(componentId: string, combinations: Record<st
 
   // Create grid container
   const gridContainer = figma.createFrame();
-  gridContainer.name = 'Grid Container';
+  gridContainer.name = "Grid Container";
   gridContainer.x = dynamicLabelWidth;
   gridContainer.y = dynamicHeaderHeight;
   gridContainer.resize(gridWidth, gridHeight);
   gridContainer.fills = [];
-  gridContainer.strokeAlign = 'INSIDE';
-  gridContainer.strokes = [{ type: 'SOLID', color: { r: 0.7, g: 0.4, b: 1 } }];
+  gridContainer.strokeAlign = "INSIDE";
+  gridContainer.strokes = [{ type: "SOLID", color: { r: 0.7, g: 0.4, b: 1 } }];
   gridContainer.strokeWeight = 2;
   gridContainer.dashPattern = [8, 4];
   gridContainer.cornerRadius = 8;
@@ -726,9 +787,11 @@ async function createInstancesTable(componentId: string, combinations: Record<st
       cell.x = dynamicLabelWidth + col * cellSize;
       cell.y = dynamicHeaderHeight + row * cellSize;
       cell.resize(cellSize, cellSize);
-      cell.fills = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 }, opacity: 0.8 }];
-      cell.strokeAlign = 'INSIDE';
-      cell.strokes = [{ type: 'SOLID', color: { r: 0.9, g: 0.9, b: 0.95 } }];
+      cell.fills = [
+        { type: "SOLID", color: { r: 1, g: 1, b: 1 }, opacity: 0.8 },
+      ];
+      cell.strokeAlign = "INSIDE";
+      cell.strokes = [{ type: "SOLID", color: { r: 0.9, g: 0.9, b: 0.95 } }];
       cell.strokeWeight = 1;
       cell.cornerRadius = 4;
 
@@ -741,7 +804,7 @@ async function createInstancesTable(componentId: string, combinations: Record<st
 
   // STEP 2: Instances layer (update X and Y positions)
   const instancesLayer = figma.createFrame();
-  instancesLayer.name = '✏️ Instances (Editable)';
+  instancesLayer.name = "✏️ Instances (Editable)";
   instancesLayer.x = 24;
   instancesLayer.y = 24;
   instancesLayer.resize(totalWidth - 48, totalHeight - 48);
@@ -760,8 +823,10 @@ async function createInstancesTable(componentId: string, combinations: Record<st
     if (colIndex >= 0 && (rowIndex >= 0 || rowProperties.length === 0)) {
       const instance = instances[index];
       if (instance) {
-        const cellCenterX = dynamicLabelWidth + colIndex * cellSize + cellSize / 2;
-        const cellCenterY = dynamicHeaderHeight + (rowIndex || 0) * cellSize + cellSize / 2;
+        const cellCenterX =
+          dynamicLabelWidth + colIndex * cellSize + cellSize / 2;
+        const cellCenterY =
+          dynamicHeaderHeight + (rowIndex || 0) * cellSize + cellSize / 2;
 
         instance.x = cellCenterX - instance.width / 2;
         instance.y = cellCenterY - instance.height / 2;
@@ -775,7 +840,7 @@ async function createInstancesTable(componentId: string, combinations: Record<st
 
   // STEP 3: Spanning text labels (BOTH columns and rows)
   const textLabelsLayer = figma.createFrame();
-  textLabelsLayer.name = '📝 Text Labels (Top Layer)';
+  textLabelsLayer.name = "📝 Text Labels (Top Layer)";
   textLabelsLayer.x = 24;
   textLabelsLayer.y = 24;
   textLabelsLayer.resize(totalWidth - 48, totalHeight - 48);
@@ -814,7 +879,11 @@ async function createInstancesTable(componentId: string, combinations: Record<st
       textLabelsLayer.appendChild(propLabel);
 
       // Property value (bold, colored)
-      const valueLabel = createText(span.value, 11, true, { r: 0.4, g: 0.2, b: 0.8 });
+      const valueLabel = createText(span.value, 11, true, {
+        r: 0.4,
+        g: 0.2,
+        b: 0.8,
+      });
       valueLabel.x = centerX - valueLabel.width / 2;
       valueLabel.y = yLevel + 18;
       textLabelsLayer.appendChild(valueLabel);
@@ -853,7 +922,11 @@ async function createInstancesTable(componentId: string, combinations: Record<st
       textLabelsLayer.appendChild(propLabel);
 
       // Property value (bold, colored)
-      const valueLabel = createText(span.value, 10, true, { r: 0.4, g: 0.2, b: 0.8 });
+      const valueLabel = createText(span.value, 10, true, {
+        r: 0.4,
+        g: 0.2,
+        b: 0.8,
+      });
       valueLabel.x = xLevel + 27 - valueLabel.width / 2;
       valueLabel.y = centerY + 2;
       textLabelsLayer.appendChild(valueLabel);
@@ -871,23 +944,26 @@ async function createInstancesTable(componentId: string, combinations: Record<st
 }
 
 figma.ui.onmessage = async (msg) => {
-  if (msg.type === 'generate-table') {
+  if (msg.type === "generate-table") {
     const { componentId, spacing, enabledProperties } = msg;
-    
+
     // CHECK PAYMENT STATUS AND USAGE COUNT - ADD THIS BLOCK
     const usageCount = (await figma.clientStorage.getAsync("usage-count")) || 0;
-    
+
     // If user has reached free limit and hasn't paid, show checkout
-    if (usageCount >= FREE_USAGE_LIMIT && figma.payments.status.type === "UNPAID") {
+    if (
+      usageCount >= FREE_USAGE_LIMIT &&
+      figma.payments.status.type === "UNPAID"
+    ) {
       figma.notify(
         `You've reached the free limit of ${FREE_USAGE_LIMIT} generations. Please upgrade to continue.`
       );
-      
+
       // Initiate checkout process
       await figma.payments.initiateCheckoutAsync({
         interstitial: "TRIAL_ENDED",
       });
-      
+
       // Check if user completed payment
       if (figma.payments.status.type === "UNPAID") {
         figma.notify("Payment required to continue using this feature.");
@@ -895,46 +971,48 @@ figma.ui.onmessage = async (msg) => {
       }
     }
     // END PAYMENT CHECK
-    
+
     const componentSet = figma.getNodeById(componentId) as ComponentSetNode;
-    
+
     if (componentSet) {
       const allProperties: ComponentProperty[] = [];
-      
+
       // Extract all component properties
-      for (const [propertyName, property] of Object.entries(componentSet.componentPropertyDefinitions)) {
-        if (property.type === 'VARIANT') {
+      for (const [propertyName, property] of Object.entries(
+        componentSet.componentPropertyDefinitions
+      )) {
+        if (property.type === "VARIANT") {
           allProperties.push({
             name: propertyName,
-            type: 'VARIANT',
-            values: property.variantOptions || []
+            type: "VARIANT",
+            values: property.variantOptions || [],
           });
-        } else if (property.type === 'BOOLEAN') {
+        } else if (property.type === "BOOLEAN") {
           allProperties.push({
             name: propertyName,
-            type: 'BOOLEAN',
-            values: ['true', 'false']
+            type: "BOOLEAN",
+            values: ["true", "false"],
           });
         }
       }
-      
+
       // Add exposed instance properties
       const exposedProperties = getExposedInstanceProperties(componentSet);
       allProperties.push(...exposedProperties);
-      
+
       // Filter to only enabled properties
-      const properties = allProperties.filter(prop => 
+      const properties = allProperties.filter((prop) =>
         enabledProperties.includes(prop.name)
       );
-      
+
       const combinations = generateCombinations(properties);
       await createInstancesTable(componentId, combinations, spacing);
-      
+
       // INCREMENT USAGE COUNT AND NOTIFY - ADD THIS BLOCK
       if (figma.payments.status.type === "UNPAID") {
         const newCount = usageCount + 1;
         await figma.clientStorage.setAsync("usage-count", newCount);
-        
+
         // Notify user about remaining free usages
         const remaining = Math.max(0, FREE_USAGE_LIMIT - newCount);
         if (remaining > 0) {
@@ -949,55 +1027,56 @@ figma.ui.onmessage = async (msg) => {
       } else {
         figma.notify(`Generated component table!`);
       }
-      
+
       // Send usage status to UI
       figma.ui.postMessage({
         type: "update-usage",
-        usageCount: figma.payments.status.type === "UNPAID" ? usageCount + 1 : "unlimited",
+        usageCount:
+          figma.payments.status.type === "UNPAID"
+            ? usageCount + 1
+            : "unlimited",
         isPaid: figma.payments.status.type === "PAID",
       });
       // END USAGE COUNT UPDATE
     }
-    
+  }
 
-  } 
-  
   // ADD THESE NEW MESSAGE HANDLERS
   else if (msg.type === "check-payment-status") {
     const usageCount = (await figma.clientStorage.getAsync("usage-count")) || 0;
     figma.ui.postMessage({
       type: "update-usage",
-      usageCount: figma.payments.status.type === "UNPAID" ? usageCount : "unlimited",
+      usageCount:
+        figma.payments.status.type === "UNPAID" ? usageCount : "unlimited",
       isPaid: figma.payments.status.type === "PAID",
     });
-  } 
-  else if (msg.type === "initiate-payment") {
+  } else if (msg.type === "initiate-payment") {
     await figma.payments.initiateCheckoutAsync({
       interstitial: "PAID_FEATURE",
     });
-    
+
     const usageCount = (await figma.clientStorage.getAsync("usage-count")) || 0;
     figma.ui.postMessage({
       type: "update-usage",
-      usageCount: figma.payments.status.type === "UNPAID" ? usageCount : "unlimited",
+      usageCount:
+        figma.payments.status.type === "UNPAID" ? usageCount : "unlimited",
       isPaid: figma.payments.status.type === "PAID",
     });
-  } 
-  else if (msg.type === "toggle-dev-payment-status") {
+  } else if (msg.type === "toggle-dev-payment-status") {
     toggleDevPaymentStatus();
-    
+
     const usageCount = (await figma.clientStorage.getAsync("usage-count")) || 0;
     figma.ui.postMessage({
       type: "update-usage",
-      usageCount: figma.payments.status.type === "UNPAID" ? usageCount : "unlimited",
+      usageCount:
+        figma.payments.status.type === "UNPAID" ? usageCount : "unlimited",
       isPaid: figma.payments.status.type === "PAID",
     });
-  } 
-  else if (msg.type === "reset-usage-count") {
+  } else if (msg.type === "reset-usage-count") {
     resetUsageCount();
   }
-  
-  if (msg.type === 'cancel') {
+
+  if (msg.type === "cancel") {
     figma.closePlugin();
   }
 };
