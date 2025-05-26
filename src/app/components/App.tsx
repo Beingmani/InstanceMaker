@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Select, Card, Typography, Space, InputNumber, Table, Tag, Switch } from 'antd';
-import { PlayCircleOutlined, CloseOutlined } from '@ant-design/icons';
+import { Button, Select, Card, Typography, Space, InputNumber, Table, Tag, Switch, Alert, Progress } from 'antd';
+import { PlayCircleOutlined, CloseOutlined,UnlockOutlined, LockOutlined, CrownOutlined} from '@ant-design/icons';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -17,6 +17,82 @@ interface ComponentInfo {
   properties: ComponentProperty[];
 }
 
+// Payment Alert Component
+const UsageAlert = ({
+  isPaid,
+  usageCount,
+  FREE_USAGE_LIMIT,
+  usagePercentage,
+  initiatePayment,
+}) => {
+  const showUpgrade = usageCount >= FREE_USAGE_LIMIT && !isPaid;
+
+  const renderStatus = () => {
+    if (isPaid) {
+      return (
+        <Text strong style={{ fontSize: "12px", marginBottom: "12px" }}>
+          Premium
+        </Text>
+      );
+    }
+    if (showUpgrade) {
+      return (
+        <Button
+          type="primary"
+          icon={<CrownOutlined />}
+          size="small"
+          onClick={initiatePayment}
+          style={{
+            padding: "0 8px",
+            height: "20px",
+            fontSize: "10px",
+            backgroundColor: "#FA8C16",
+            borderColor: "#FA8C16",
+            marginBottom: "12px"
+          }}
+        >
+          Upgrade
+        </Button>
+      );
+    }
+    return (
+      <Text strong style={{ fontSize: "12px", marginBottom: "12px" }}>
+        Free
+      </Text>
+    );
+  };
+
+  return (
+    <Alert
+      message={
+        <div>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <Text style={{ fontSize: "12px", fontWeight: 500 }}>
+                {renderStatus()}
+              </Text>
+            </div>
+            <Text style={{ fontSize: "12px" }}>
+              {isPaid ? "Unlimited" : `${usageCount}/${FREE_USAGE_LIMIT}`}
+            </Text>
+          </div>
+
+          {!isPaid && (
+            <Progress percent={usagePercentage} size="small" showInfo={false} />
+          )}
+        </div>
+      }
+      type={isPaid ? "success" : showUpgrade ? "warning" : "info"}
+    />
+  );
+};
+
 const App: React.FC = () => {
  
  // Make sure this is correctly typed
@@ -26,17 +102,35 @@ const [selectedComponent, setSelectedComponent] = useState<ComponentInfo | null>
   const [includeBooleans, setIncludeBooleans] = useState<boolean>(true);
   const [includeExposedInstances, setIncludeExposedInstances] = useState<boolean>(false);
   const [toggledProperties, setToggledProperties] = useState<Record<string, boolean>>({});
+  const [usageCount, setUsageCount] = useState<number | "unlimited">(0);
+const [isPaid, setIsPaid] = useState<boolean>(false);
+const FREE_USAGE_LIMIT = 1;
 
- useEffect(() => {
+useEffect(() => {
+  // Check payment status on mount
+  parent.postMessage(
+    {
+      pluginMessage: {
+        type: "check-payment-status",
+      },
+    },
+    "*"
+  );
+
   // Listen for messages from the plugin controller
   window.onmessage = (event) => {
-    const { type, data } = event.data.pluginMessage || {};
+    const { type, data, usageCount, isPaid } = event.data.pluginMessage || {};
     
     if (type === 'component-selected') {
       setSelectedComponent(data);
     } else if (type === 'selection-cleared') {
       setSelectedComponent(null);
       setToggledProperties({});
+    } else if (type === 'update-usage') {
+      // Handle payment status updates - fix the data structure
+      setUsageCount(usageCount !== undefined ? usageCount : data?.usageCount);
+      setIsPaid(isPaid !== undefined ? isPaid : data?.isPaid);
+      console.log('Payment status updated:', { usageCount, isPaid }); // Debug log
     }
   };
 }, []);
@@ -57,6 +151,44 @@ useEffect(() => {
     setToggledProperties(initialToggles);
   }
 }, [selectedComponent, includeBooleans, includeExposedInstances]);
+
+// Add these payment functions
+const initiatePayment = () => {
+  parent.postMessage(
+    {
+      pluginMessage: {
+        type: "initiate-payment",
+      },
+    },
+    "*"
+  );
+};
+
+const toggleDevPaymentStatus = () => {
+  parent.postMessage(
+    {
+      pluginMessage: {
+        type: "toggle-dev-payment-status",
+      },
+    },
+    "*"
+  );
+};
+
+const resetUsageCount = () => {
+  parent.postMessage(
+    {
+      pluginMessage: {
+        type: "reset-usage-count",
+      },
+    },
+    "*"
+  );
+};
+
+// Calculate remaining free uses
+const remainingUses = typeof usageCount === "number" ? Math.max(0, FREE_USAGE_LIMIT - usageCount) : "unlimited";
+const usagePercentage = typeof usageCount === "number" ? (usageCount / FREE_USAGE_LIMIT) * 100 : 100;
 
   // Generate combinations function
   const generateCombinations = (properties: ComponentProperty[]): Record<string, string>[] => {
@@ -176,6 +308,17 @@ const handleGenerate = () => {
   return (
     <div style={{ padding: '20px', fontFamily: 'Inter, sans-serif' }}>
       <Space direction="vertical" size="large" style={{ width: '100%' }}>
+
+        {/* ADD THIS BLOCK */}
+<div style={{ marginBottom: "16px" }}>
+  <UsageAlert
+    isPaid={isPaid}
+    usageCount={usageCount}
+    FREE_USAGE_LIMIT={FREE_USAGE_LIMIT}
+    usagePercentage={usagePercentage}
+    initiatePayment={initiatePayment}
+  />
+</div>
         <div>
           <Title level={3}>Component Variant Generator</Title>
           <Text type="secondary">
@@ -183,6 +326,15 @@ const handleGenerate = () => {
             and exposed instances
           </Text>
         </div>
+       
+<div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
+        <Button size="small" onClick={toggleDevPaymentStatus}>
+          Toggle Payment
+        </Button>
+        <Button size="small" onClick={resetUsageCount}>
+          Reset Usage
+        </Button>
+      </div>
 
         <div>
           <Space align="center">
@@ -378,14 +530,35 @@ const handleGenerate = () => {
           <Button onClick={handleCancel} icon={<CloseOutlined />}>
             Cancel
           </Button>
-         <Button
-  type="primary"
-  onClick={handleGenerate}
-  disabled={!selectedComponent || calculateCombinations() === 0}
-  icon={<PlayCircleOutlined />}
->
-  Generate Table
-</Button>
+        <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+  <Button onClick={handleCancel} icon={<CloseOutlined />}>
+    Cancel
+  </Button>
+  <Button
+    type="primary"
+    onClick={handleGenerate}
+    disabled={
+      !selectedComponent || 
+      calculateCombinations() === 0 ||
+      (typeof usageCount === "number" && usageCount >= FREE_USAGE_LIMIT && !isPaid)
+    }
+    icon={<PlayCircleOutlined />}
+  >
+    {!isPaid && typeof usageCount === "number" && usageCount >= FREE_USAGE_LIMIT 
+      ? 'Upgrade Required' 
+      : 'Generate Table'
+    }
+  </Button>
+  
+  {/* Add premium indicator button */}
+  <Button
+    icon={isPaid ? <UnlockOutlined /> : <LockOutlined />}
+    type="dashed"
+    onClick={!isPaid ? initiatePayment : undefined}
+    disabled={isPaid}
+    title={isPaid ? "Premium features unlocked" : "Unlock premium features"}
+  />
+</Space>
         </Space>
       </Space>
     </div>

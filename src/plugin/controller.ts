@@ -2,6 +2,11 @@
 
 figma.showUI(__html__, { width: 800, height: 600 });
 
+// Add this at the top after imports
+const FREE_USAGE_LIMIT = 1;
+
+
+
 figma.on('selectionchange', () => {
   const selection = figma.currentPage.selection;
   
@@ -75,6 +80,28 @@ function sendComponentData(componentSet: ComponentSetNode) {
     }
   });
 }
+
+// Add this function after the existing helper functions
+const resetUsageCount = async () => {
+  await figma.clientStorage.setAsync("usage-count", 0);
+  figma.notify("Usage count reset to 0");
+  figma.ui.postMessage({
+    type: "update-usage",
+    usageCount: 0,
+    isPaid: figma.payments.status.type === "PAID",
+  });
+};
+
+// Add this function for development testing
+const toggleDevPaymentStatus = () => {
+  if (figma.payments.status.type === "UNPAID") {
+    figma.payments.setPaymentStatusInDevelopment({ type: "PAID" });
+    figma.notify("Dev mode: Payment status set to PAID");
+  } else {
+    figma.payments.setPaymentStatusInDevelopment({ type: "UNPAID" });
+    figma.notify("Dev mode: Payment status set to UNPAID");
+  }
+};
 
 // Helper function to send single Component data
 function sendSingleComponentData(component: ComponentNode) {
@@ -844,46 +871,132 @@ async function createInstancesTable(componentId: string, combinations: Record<st
 }
 
 figma.ui.onmessage = async (msg) => {
-  
- if (msg.type === 'generate-table') {
-  const { componentId, spacing, enabledProperties } = msg;
-  const componentSet = figma.getNodeById(componentId) as ComponentSetNode;
-  
-  if (componentSet) {
-    const allProperties: ComponentProperty[] = [];
+  if (msg.type === 'generate-table') {
+    const { componentId, spacing, enabledProperties } = msg;
     
-    // Extract all component properties
-    for (const [propertyName, property] of Object.entries(componentSet.componentPropertyDefinitions)) {
-      if (property.type === 'VARIANT') {
-        allProperties.push({
-          name: propertyName,
-          type: 'VARIANT',
-          values: property.variantOptions || []
-        });
-      } else if (property.type === 'BOOLEAN') {
-        allProperties.push({
-          name: propertyName,
-          type: 'BOOLEAN',
-          values: ['true', 'false']
-        });
+    // CHECK PAYMENT STATUS AND USAGE COUNT - ADD THIS BLOCK
+    const usageCount = (await figma.clientStorage.getAsync("usage-count")) || 0;
+    
+    // If user has reached free limit and hasn't paid, show checkout
+    if (usageCount >= FREE_USAGE_LIMIT && figma.payments.status.type === "UNPAID") {
+      figma.notify(
+        `You've reached the free limit of ${FREE_USAGE_LIMIT} generations. Please upgrade to continue.`
+      );
+      
+      // Initiate checkout process
+      await figma.payments.initiateCheckoutAsync({
+        interstitial: "TRIAL_ENDED",
+      });
+      
+      // Check if user completed payment
+      if (figma.payments.status.type === "UNPAID") {
+        figma.notify("Payment required to continue using this feature.");
+        return;
       }
     }
+    // END PAYMENT CHECK
     
-    // Add exposed instance properties
-    const exposedProperties = getExposedInstanceProperties(componentSet);
-    allProperties.push(...exposedProperties);
+    const componentSet = figma.getNodeById(componentId) as ComponentSetNode;
     
-    // Filter to only enabled properties
-    const properties = allProperties.filter(prop => 
-      enabledProperties.includes(prop.name)
-    );
+    if (componentSet) {
+      const allProperties: ComponentProperty[] = [];
+      
+      // Extract all component properties
+      for (const [propertyName, property] of Object.entries(componentSet.componentPropertyDefinitions)) {
+        if (property.type === 'VARIANT') {
+          allProperties.push({
+            name: propertyName,
+            type: 'VARIANT',
+            values: property.variantOptions || []
+          });
+        } else if (property.type === 'BOOLEAN') {
+          allProperties.push({
+            name: propertyName,
+            type: 'BOOLEAN',
+            values: ['true', 'false']
+          });
+        }
+      }
+      
+      // Add exposed instance properties
+      const exposedProperties = getExposedInstanceProperties(componentSet);
+      allProperties.push(...exposedProperties);
+      
+      // Filter to only enabled properties
+      const properties = allProperties.filter(prop => 
+        enabledProperties.includes(prop.name)
+      );
+      
+      const combinations = generateCombinations(properties);
+      await createInstancesTable(componentId, combinations, spacing);
+      
+      // INCREMENT USAGE COUNT AND NOTIFY - ADD THIS BLOCK
+      if (figma.payments.status.type === "UNPAID") {
+        const newCount = usageCount + 1;
+        await figma.clientStorage.setAsync("usage-count", newCount);
+        
+        // Notify user about remaining free usages
+        const remaining = Math.max(0, FREE_USAGE_LIMIT - newCount);
+        if (remaining > 0) {
+          figma.notify(
+            `Generated component table! You have ${remaining} free generations remaining.`
+          );
+        } else {
+          figma.notify(
+            `Generated component table! This was your last free generation.`
+          );
+        }
+      } else {
+        figma.notify(`Generated component table!`);
+      }
+      
+      // Send usage status to UI
+      figma.ui.postMessage({
+        type: "update-usage",
+        usageCount: figma.payments.status.type === "UNPAID" ? usageCount + 1 : "unlimited",
+        isPaid: figma.payments.status.type === "PAID",
+      });
+      // END USAGE COUNT UPDATE
+    }
     
-    const combinations = generateCombinations(properties);
-    await createInstancesTable(componentId, combinations, spacing);
+
+  } 
+  
+  // ADD THESE NEW MESSAGE HANDLERS
+  else if (msg.type === "check-payment-status") {
+    const usageCount = (await figma.clientStorage.getAsync("usage-count")) || 0;
+    figma.ui.postMessage({
+      type: "update-usage",
+      usageCount: figma.payments.status.type === "UNPAID" ? usageCount : "unlimited",
+      isPaid: figma.payments.status.type === "PAID",
+    });
+  } 
+  else if (msg.type === "initiate-payment") {
+    await figma.payments.initiateCheckoutAsync({
+      interstitial: "PAID_FEATURE",
+    });
+    
+    const usageCount = (await figma.clientStorage.getAsync("usage-count")) || 0;
+    figma.ui.postMessage({
+      type: "update-usage",
+      usageCount: figma.payments.status.type === "UNPAID" ? usageCount : "unlimited",
+      isPaid: figma.payments.status.type === "PAID",
+    });
+  } 
+  else if (msg.type === "toggle-dev-payment-status") {
+    toggleDevPaymentStatus();
+    
+    const usageCount = (await figma.clientStorage.getAsync("usage-count")) || 0;
+    figma.ui.postMessage({
+      type: "update-usage",
+      usageCount: figma.payments.status.type === "UNPAID" ? usageCount : "unlimited",
+      isPaid: figma.payments.status.type === "PAID",
+    });
+  } 
+  else if (msg.type === "reset-usage-count") {
+    resetUsageCount();
   }
   
-  figma.closePlugin();
-}
   if (msg.type === 'cancel') {
     figma.closePlugin();
   }
