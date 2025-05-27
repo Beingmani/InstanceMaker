@@ -1,0 +1,117 @@
+.scrolling-subscribe-button {
+  --color1: 108, 92, 231;
+  --color2: 162, 155, 254;
+  background: linear-gradient(135deg, 
+    rgb(var(--color1)), 
+    rgb(var(--color2))
+  ) !important;
+  border: none !important;
+  border-radius: 6px !important;
+  padding: 16px 24px !important;
+  height: auto !important;
+  overflow: hidden !important;
+  position: relative !important;
+  cursor: pointer !important;
+  transition: transform 0.3s ease, box-shadow 0.3s ease !important;
+  width: 100% !important;
+  display: block !important;
+  animation: colorLoop 6s ease-in-out infinite !important;
+}
+
+@keyframes colorLoop {
+  0% {
+    --color1: 108, 92, 231;  /* Purple */
+    --color2: 162, 155, 254;
+  }
+  25% {
+    --color1: 253, 121, 168; /* Pink */
+    --color2: 253, 203, 110; /* Yellow */
+  }
+  50% {
+    --color1: 0, 184, 148;   /* Teal */
+    --color2: 0, 206, 201;   /* Cyan */
+  }
+  75% {
+    --color1: 225, 112, 85;  /* Orange */
+    --color2: 250, 177, 160; /* Peach */
+  }
+  100% {
+    --color1: 108, 92, 231;  /* Back to Purple */
+    --color2: 162, 155, 254;
+  }
+}
+
+.scrolling-subscribe-button:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 20px rgba(108, 92, 231, 0.4) !important;
+}
+
+.scrolling-subscribe-button:focus {
+  box-shadow: 0 4px 15px rgba(108, 92, 231, 0.5) !important;
+}
+
+.scrolling-text-container {
+  width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  position: relative;
+}
+
+.scrolling-text {
+  display: inline-block;
+  color: white;
+  font-weight: bold;
+  font-size: 16px;
+  letter-spacing: 2px;
+  animation: scroll-left 15s linear infinite;
+  white-space: nowrap;
+}
+
+@keyframes scroll-left {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+.scrolling-subscribe-button:hover .scrolling-text {
+  animation-play-state: paused;
+}
+
+@media (max-width: 768px) {
+  .scrolling-text {
+    font-size: 12px;
+    letter-spacing: 0.5px;
+  }
+  
+  .scrolling-subscribe-button {
+    padding: 12px 2px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scrolling-subscribe-button {
+    animation: none !important;
+    --color1: 108, 92, 231;
+    --color2: 162, 155, 254;
+  }
+  
+  .scrolling-text {
+    animation: none;
+  }
+  
+  .scrolling-text-container::after {
+    content: "SUBSCRIBE";
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    color: white;
+    font-weight: bold;
+  }
+  
+  .scrolling-text {
+    opacity: 0;
+  }
+}

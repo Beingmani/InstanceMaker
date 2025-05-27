@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import LoopingUpgradeButton from './LoopingUpgradeButton';
 import {
   Button,
   Select,
@@ -22,6 +23,7 @@ import {
   PlayCircleOutlined,
   CloseOutlined,
   UnlockOutlined,
+  CrownOutlined, UserOutlined,
   LockOutlined,
   CrownOutlined,
 } from "@ant-design/icons";
@@ -41,7 +43,6 @@ interface ComponentInfo {
   properties: ComponentProperty[];
 }
 
-// Payment Alert Component
 const UsageAlert = ({
   isPaid,
   usageCount,
@@ -51,69 +52,45 @@ const UsageAlert = ({
 }) => {
   const showUpgrade = usageCount >= FREE_USAGE_LIMIT && !isPaid;
 
-  const renderStatus = () => {
+  const renderUsageText = () => {
     if (isPaid) {
-      return (
-        <Text strong style={{ fontSize: "12px", marginBottom: "12px" }}>
-          Premium
-        </Text>
-      );
+   return (
+      <span style={{ fontSize: "12px", color: "#52c41a" }}>
+        Unlimited
+      </span>
+    );
     }
     if (showUpgrade) {
-      return (
-        <Button
-          type="primary"
-          icon={<CrownOutlined />}
-          size="small"
-          onClick={initiatePayment}
-          style={{
-            padding: "0 8px",
-            height: "20px",
-            fontSize: "10px",
-            backgroundColor: "#FA8C16",
-            borderColor: "#FA8C16",
-            marginBottom: "12px",
-          }}
-        >
-          Upgrade
-        </Button>
-      );
+      return "No free generations";
     }
-    return (
-      <Text strong style={{ fontSize: "12px", marginBottom: "12px" }}>
-        Free
-      </Text>
+       return (
+      <span>
+    <span style={{ fontSize: "18px", fontWeight: "bold", color: "#1890ff" }}>{usageCount}</span>
+        <span style={{ fontSize: "12px", fontWeight: "normal" }}>/{FREE_USAGE_LIMIT}</span>
+      </span>
     );
   };
 
   return (
-    <Alert
-      message={
-        <div>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <Text style={{ fontSize: "12px", fontWeight: 500 }}>
-                {renderStatus()}
-              </Text>
-            </div>
-            <Text style={{ fontSize: "12px" }}>
-              {isPaid ? "Unlimited" : `${usageCount}/${FREE_USAGE_LIMIT}`}
-            </Text>
-          </div>
-
-          {!isPaid && (
-            <Progress percent={usagePercentage} size="small" showInfo={false} />
-          )}
-        </div>
-      }
-      type={isPaid ? "success" : showUpgrade ? "warning" : "info"}
-    />
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        padding: "8px 12px",
+      }}
+    >
+      
+      <Text 
+        style={{ 
+          fontSize: "12px",
+          color: showUpgrade ? "#ff4d4f" : "inherit",
+          fontWeight: showUpgrade ? 500 : "normal"
+        }}
+      >
+        {renderUsageText()}
+      </Text>
+    </div>
   );
 };
 
@@ -378,16 +355,8 @@ const cleanPropertyName = (name) => {
   return (
     <div style={{ padding: "12px", fontFamily: "Inter, sans-serif" }}>
       <Space direction="vertical" size={4} style={{ width: "100%" }}>
-        {/* ADD THIS BLOCK */}
-        <div style={{ marginBottom: "16px" }}>
-          <UsageAlert
-            isPaid={isPaid}
-            usageCount={usageCount}
-            FREE_USAGE_LIMIT={FREE_USAGE_LIMIT}
-            usagePercentage={usagePercentage}
-            initiatePayment={initiatePayment}
-          />
-        </div>
+   
+       
         {/* <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
           <Button size="small" onClick={toggleDevPaymentStatus}>
             Toggle Payment
@@ -398,8 +367,29 @@ const cleanPropertyName = (name) => {
         </div> */}
 
        
-
-
+{!isPaid && (
+  <LoopingUpgradeButton onClick={initiatePayment} />
+)}
+ <div style={{ display: "flex", gap: "8px", marginBottom: "12px", justifyContent: "space-between",alignItems: "baseline"}}>
+ <Text
+  style={{
+    fontSize: "12px",
+    color: "#888",
+    marginTop: "12px",
+    display: "block",
+    fontWeight: "bold",
+  }}
+>
+Preview Window
+</Text>
+ <UsageAlert
+            isPaid={isPaid}
+            usageCount={usageCount}
+            FREE_USAGE_LIMIT={FREE_USAGE_LIMIT}
+            usagePercentage={usagePercentage}
+            initiatePayment={initiatePayment}
+          />
+          </div>
       <Card
         style={{
           position: "relative",
@@ -743,6 +733,23 @@ const cleanPropertyName = (name) => {
     gap: "12px", // Add gap between buttons
   }}
 >
+   <Tag
+    icon={isPaid ? <CrownOutlined /> : <UserOutlined />}
+    color={isPaid ? "gold" : "default"}
+    style={{
+      height: "32px", // Match button height
+      lineHeight: "30px", // Adjust for icon + text alignment
+      fontSize: "14px", // Match button font size
+      borderRadius: "6px", // Match button border radius
+      display: "flex",
+      alignItems: "center",
+      gap: "4px",
+      flexShrink: 0, // Prevent shrinking
+      margin:0
+    }}
+  >
+    {isPaid ? "Premium" : "Free"}
+  </Tag>
   <Button
     type="primary"
     onClick={handleGenerate}
@@ -779,7 +786,7 @@ const cleanPropertyName = (name) => {
     onClick={!isPaid ? initiatePayment : undefined}
     disabled={isPaid}
     title={
-      isPaid ? "Premium features unlocked" : "Unlock premium features"
+      isPaid ? "Premium unlocked" : "Upgrade to access unlimited generations"
     }
     style={{ flexShrink: 0 }} // Prevent this button from shrinking
   />
