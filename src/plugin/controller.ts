@@ -5,7 +5,7 @@ figma.showUI(__html__, { width: 400, height: 600 });
 // Add this at the top after imports
 const FREE_USAGE_LIMIT = 10;
 
-figma.on("selectionchange", () => {
+figma.on("selectionchange",async () => {
   const selection = figma.currentPage.selection;
 
   if (selection.length === 1) {
@@ -13,26 +13,26 @@ figma.on("selectionchange", () => {
 
     // Check if selected node is a ComponentSet or Component
     if (selected.type === "COMPONENT_SET") {
-      sendComponentData(selected);
+     await sendComponentData(selected);
     } else if (selected.type === "COMPONENT") {
       // If it's a single component, check if it has a parent ComponentSet
       if (selected.parent && selected.parent.type === "COMPONENT_SET") {
-        sendComponentData(selected.parent as ComponentSetNode);
+       await sendComponentData(selected.parent as ComponentSetNode);
       } else {
         // Single component without variants
-        sendSingleComponentData(selected);
+        await sendSingleComponentData(selected);
       }
     } else if (selected.type === "INSTANCE") {
       // If instance is selected, get its main component
-      const mainComponent = selected.mainComponent;
+      const mainComponent = await selected.getMainComponentAsync();
       if (
         mainComponent &&
         mainComponent.parent &&
         mainComponent.parent.type === "COMPONENT_SET"
       ) {
-        sendComponentData(mainComponent.parent as ComponentSetNode);
+       await sendComponentData(mainComponent.parent as ComponentSetNode);
       } else if (mainComponent) {
-        sendSingleComponentData(mainComponent);
+        await sendSingleComponentData(mainComponent);
       }
     } else {
       // Not a component-related selection
@@ -49,7 +49,7 @@ figma.on("selectionchange", () => {
 });
 
 // Helper function to send ComponentSet data
-function sendComponentData(componentSet: ComponentSetNode) {
+async function sendComponentData(componentSet: ComponentSetNode) {
   const properties: ComponentProperty[] = [];
 
   // Extract all component properties
@@ -72,7 +72,7 @@ function sendComponentData(componentSet: ComponentSetNode) {
   }
 
   // Add exposed instance properties
-  const exposedProperties = getExposedInstanceProperties(componentSet);
+  const exposedProperties = await getExposedInstanceProperties(componentSet);
   properties.push(...exposedProperties);
 
   figma.ui.postMessage({
@@ -112,11 +112,11 @@ const toggleDevPaymentStatus = () => {
 };
 
 // Helper function to send single Component data
-function sendSingleComponentData(component: ComponentNode) {
+async function sendSingleComponentData(component: ComponentNode) {
   const properties: ComponentProperty[] = [];
 
   // Get exposed instance properties for single component
-  const exposedProperties = getExposedInstanceProperties(component);
+  const exposedProperties = await getExposedInstanceProperties(component);
   properties.push(...exposedProperties);
 
   figma.ui.postMessage({
@@ -179,12 +179,12 @@ function generateCombinations(
 
 // Find all exposed instances within a component and extract their properties
 // Find all exposed instances within a component and extract their properties
-function getExposedInstanceProperties(
+async function getExposedInstanceProperties(
   componentNode: ComponentNode | ComponentSetNode
-): ComponentProperty[] {
+): Promise<ComponentProperty[]> {
   const exposedProperties: ComponentProperty[] = [];
 
-  function traverseForExposedInstances(node: SceneNode, path: string = "") {
+  async function traverseForExposedInstances(node: SceneNode, path: string = "") {
     if (node.type === "INSTANCE" && node.isExposedInstance) {
       const nodePath = path ? `${path}/${node.name}` : node.name;
 
@@ -197,8 +197,8 @@ function getExposedInstanceProperties(
           const fullPropertyName = `${nodePath}/${propertyName}`;
 
           if (property.type === "VARIANT") {
-            // Get variant options from the main component
-            const mainComponent = node.mainComponent;
+            // ✅ FIX: Use async method to get main component
+            const mainComponent = await node.getMainComponentAsync();
             if (
               mainComponent &&
               mainComponent.parent &&
@@ -233,17 +233,17 @@ function getExposedInstanceProperties(
         }
       }
 
-      // Continue traversing children
+      // Continue traversing children - using for...of instead of forEach for async
       if ("children" in node) {
-        node.children.forEach((child) =>
-          traverseForExposedInstances(child, nodePath)
-        );
+        for (const child of node.children) {
+          await traverseForExposedInstances(child, nodePath);
+        }
       }
     } else if ("children" in node) {
-      // Continue traversing with same path for non-exposed instances
-      node.children.forEach((child) =>
-        traverseForExposedInstances(child, path)
-      );
+      // Continue traversing with same path for non-exposed instances - using for...of instead of forEach for async
+      for (const child of node.children) {
+        await traverseForExposedInstances(child, path);
+      }
     }
   }
 
@@ -254,20 +254,20 @@ function getExposedInstanceProperties(
       (child) => child.type === "COMPONENT"
     );
     if (firstComponent) {
-      traverseForExposedInstances(firstComponent);
+      await traverseForExposedInstances(firstComponent);
     }
   } else {
-    traverseForExposedInstances(componentNode);
+    await traverseForExposedInstances(componentNode);
   }
 
   return exposedProperties;
 }
 
 // Find all component sets in the current page
-function findComponentSets(): ComponentInfo[] {
+async function findComponentSets(): ComponentInfo[] {
   const componentSets: ComponentInfo[] = [];
 
-  function traverse(node: SceneNode) {
+  async function traverse(node: SceneNode) {
     if (node.type === "COMPONENT_SET") {
       const properties: ComponentProperty[] = [];
 
@@ -291,7 +291,7 @@ function findComponentSets(): ComponentInfo[] {
       }
 
       // Add exposed instance properties
-      const exposedProperties = getExposedInstanceProperties(node);
+      const exposedProperties = await getExposedInstanceProperties(node);
       properties.push(...exposedProperties);
 
       componentSets.push({
@@ -420,7 +420,7 @@ async function createInstancesTable(
   combinations: Record<string, string>[],
   spacing: number = 20
 ) {
-    const node = figma.getNodeById(componentId);
+    const node = await figma.getNodeByIdAsync(componentId);
   
   let componentSet: ComponentSetNode | null = null;
   let singleComponent: ComponentNode | null = null;
@@ -1035,7 +1035,7 @@ figma.ui.onmessage = async (msg) => {
     // END PAYMENT CHECK
 
     // ✅ NEW - Handle both component types
-    const node = figma.getNodeById(componentId);
+    const node = await figma.getNodeByIdAsync(componentId);
     
     if (node && (node.type === "COMPONENT_SET" || node.type === "COMPONENT")) {
       const allProperties: ComponentProperty[] = [];
@@ -1063,12 +1063,12 @@ figma.ui.onmessage = async (msg) => {
         }
 
         // Add exposed instance properties
-        const exposedProperties = getExposedInstanceProperties(componentSet);
+        const exposedProperties = await getExposedInstanceProperties(componentSet);
         allProperties.push(...exposedProperties);
       } else {
         // For single components, only get exposed instance properties
         const component = node as ComponentNode;
-        const exposedProperties = getExposedInstanceProperties(component);
+        const exposedProperties = await getExposedInstanceProperties(component);
         allProperties.push(...exposedProperties);
       }
 

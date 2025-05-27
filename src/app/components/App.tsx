@@ -388,14 +388,14 @@ const cleanPropertyName = (name) => {
             initiatePayment={initiatePayment}
           />
         </div>
-        <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
+        {/* <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
           <Button size="small" onClick={toggleDevPaymentStatus}>
             Toggle Payment
           </Button>
           <Button size="small" onClick={resetUsageCount}>
             Reset Usage
           </Button>
-        </div>
+        </div> */}
 
        
 
@@ -521,10 +521,6 @@ const cleanPropertyName = (name) => {
     </div>
   ) : (
     <div style={{ padding: "20px" }}>
-      <Text style={{ fontSize: "14px", color: "#52c41a" }}>
-        Selected Component
-      </Text>
-      <br />
       <Text code style={{ fontSize: "16px", marginTop: "8px" }}>
         {selectedComponent.name}
       </Text>
@@ -731,62 +727,63 @@ const cleanPropertyName = (name) => {
 
        
 
-          <div
-          style={{
-            position: "fixed",
-            bottom: 0,
-            left: 0,
-            width: "92%",
-            padding: "12px 16px",
-            backgroundColor: "#fff",
-            borderTop: "1px solid #eee",
-            boxShadow: "0 -2px 8px rgba(0,0,0,0.05)",
-            zIndex: 10,
-            display: "flex",
-            justifyContent: "space-between",
-          }}
-        >
-         <Button
-  type="primary"
-  onClick={handleGenerate}
-  disabled={
-    !selectedComponent ||
-    calculateCombinations() === 0 ||
-    (typeof usageCount === "number" &&
-      usageCount >= FREE_USAGE_LIMIT &&
-      !isPaid)
-  }
-  icon={<PlayCircleOutlined />}
+         <div
+  style={{
+    position: "fixed",
+    bottom: 0,
+    left: 0,
+    width: "92%",
+    padding: "12px 16px",
+    backgroundColor: "#fff",
+    borderTop: "1px solid #eee",
+    boxShadow: "0 -2px 8px rgba(0,0,0,0.05)",
+    zIndex: 10,
+    display: "flex",
+    justifyContent: "space-between",
+    gap: "12px", // Add gap between buttons
+  }}
 >
-  {(() => {
-    // ✅ NEW - Better button text based on state
-    if (!isPaid && typeof usageCount === "number" && usageCount >= FREE_USAGE_LIMIT) {
-      return "Upgrade Required";
+  <Button
+    type="primary"
+    onClick={handleGenerate}
+    disabled={
+      !selectedComponent ||
+      calculateCombinations() === 0 ||
+      (typeof usageCount === "number" &&
+        usageCount >= FREE_USAGE_LIMIT &&
+        !isPaid)
     }
-    if (!selectedComponent) {
-      return "Select Component";
-    }
-    if (calculateCombinations() === 0) {
-      return selectedComponent?.properties.length === 0 
-        ? "No Properties Found"
-        : "Enable Properties Above";
-    }
-    return "Generate Table";
-  })()}
-</Button>
+    icon={<PlayCircleOutlined />}
+    style={{ width: "100%" }} // Make button full width
+  >
+    {(() => {
+      if (!isPaid && typeof usageCount === "number" && usageCount >= FREE_USAGE_LIMIT) {
+        return "Upgrade Required";
+      }
+      if (!selectedComponent) {
+        return "Select Component";
+      }
+      if (calculateCombinations() === 0) {
+        return selectedComponent?.properties.length === 0 
+          ? "No Properties Found"
+          : "Enable Properties Above";
+      }
+      return "Generate Table";
+    })()}
+  </Button>
 
-            {/* Add premium indicator button */}
-            <Button
-              icon={isPaid ? <UnlockOutlined /> : <LockOutlined />}
-              type="dashed"
-              onClick={!isPaid ? initiatePayment : undefined}
-              disabled={isPaid}
-              title={
-                isPaid ? "Premium features unlocked" : "Unlock premium features"
-              }
-            />
-        </div>
-
+  {/* Premium indicator button */}
+  <Button
+    icon={isPaid ? <UnlockOutlined /> : <LockOutlined />}
+    type="dashed"
+    onClick={!isPaid ? initiatePayment : undefined}
+    disabled={isPaid}
+    title={
+      isPaid ? "Premium features unlocked" : "Unlock premium features"
+    }
+    style={{ flexShrink: 0 }} // Prevent this button from shrinking
+  />
+</div>
         <div style={{ height: "60px" }}></div>
 
         

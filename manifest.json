@@ -1,8 +1,11 @@
 {
-  "name": "InstanceMaker",
-  "id": "00000000",
+  "name": "Instancer",
+ "id": "1509062764896520083",
   "api": "1.0.0",
   "main": "dist/code.js",
   "ui": "dist/ui.html",
-  "editorType": ["figma", "figjam"],"permissions": ["payments"]
+  "editorType": ["figma", "figjam"],"permissions": ["payments"],
+  "documentAccess": "dynamic-page",
+  "networkAccess": { "allowedDomains": ["none"]}
+
 }
