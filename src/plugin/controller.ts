@@ -419,8 +419,15 @@ async function createInstancesTable(
   componentId: string,
   combinations: Record<string, string>[],
   spacing: number = 20,
-    layoutDirection?: string 
+    layoutDirection?: string ,
+      theme?: any // Add theme parameter
 ) {
+   const currentTheme = theme || {
+    primary: { r: 0.4, g: 0.2, b: 0.8 },
+    secondary: { r: 0.94, g: 0.94, b: 0.98 },
+    stroke: { r: 0.85, g: 0.85, b: 0.9 },
+    accent: { r: 0.7, g: 0.4, b: 1 }
+  };
     const node = await figma.getNodeByIdAsync(componentId);
   
   let componentSet: ComponentSetNode | null = null;
@@ -624,19 +631,19 @@ function getOptimalDistribution(forcedDirection?: string) {
 
   // Text helper
   function createText(
-    content: string,
-    fontSize: number = 12,
-    isBold: boolean = false,
-    color: RGB = { r: 0.2, g: 0.2, b: 0.2 }
-  ): TextNode {
-    const text = figma.createText();
-    text.characters = content;
-    text.fontSize = fontSize;
-    text.fontName = { family: "Inter", style: isBold ? "Bold" : "Regular" };
-    text.fills = [{ type: "SOLID", color }];
-    text.textAutoResize = "WIDTH_AND_HEIGHT";
-    return text;
-  }
+  content: string,
+  fontSize: number = 12,
+  isBold: boolean = false,
+  color: RGB = { r: 0.2, g: 0.2, b: 0.2 } // Keep default, but allow override
+): TextNode {
+  const text = figma.createText();
+  text.characters = content;
+  text.fontSize = fontSize;
+  text.fontName = { family: "Inter", style: isBold ? "Bold" : "Regular" };
+  text.fills = [{ type: "SOLID", color }];
+  text.textAutoResize = "WIDTH_AND_HEIGHT";
+  return text;
+}
 
   // Generate all column combinations
   function generateCombinations(
@@ -739,13 +746,13 @@ spanBox.y = yLevel;
         spanBox.fills = [
           {
             type: "SOLID",
-            color: { r: 0.94, g: 0.94, b: 0.98 },
+            color: currentTheme.secondary,
           },
         ];
         spanBox.cornerRadius = 6;
         spanBox.strokeAlign = "INSIDE";
         spanBox.strokes = [
-          { type: "SOLID", color: { r: 0.85, g: 0.85, b: 0.9 } },
+          { type: "SOLID", color: currentTheme.stroke },
         ];
         spanBox.strokeWeight = 0.5;
 
@@ -796,13 +803,13 @@ spanBox.y = startY ;
         spanBox.fills = [
           {
             type: "SOLID",
-            color: { r: 0.95, g: 0.95, b: 0.98 },
+            color: currentTheme.secondary
           },
         ];
         spanBox.cornerRadius = 6;
         spanBox.strokeAlign = "INSIDE";
         spanBox.strokes = [
-          { type: "SOLID", color: { r: 0.85, g: 0.85, b: 0.9 } },
+          { type: "SOLID", color: currentTheme.stroke },
         ];
         spanBox.strokeWeight = 0.5;
 
@@ -838,7 +845,7 @@ for (let row = 0; row < rows; row++) {
       { type: "SOLID", color: { r: 1, g: 1, b: 1 }, opacity: 0.8 },
     ];
     cell.strokeAlign = "INSIDE";
-    cell.strokes = [{ type: "SOLID", color: { r: 0.7, g: 0.4, b: 1 } }];
+    cell.strokes = [{ type: "SOLID", color: currentTheme.accent }];
     cell.strokeWeight = 1;
     cell.dashPattern = [8, 4];
     cell.cornerRadius = 4;
@@ -927,11 +934,7 @@ for (let row = 0; row < rows; row++) {
       textLabelsLayer.appendChild(propLabel);
 
       // Property value (bold, colored)
-      const valueLabel = createText(span.value, 11, true, {
-        r: 0.4,
-        g: 0.2,
-        b: 0.8,
-      });
+     const valueLabel = createText(span.value, 11, true, currentTheme.primary);
       valueLabel.x = centerX - valueLabel.width / 2;
       valueLabel.y = yLevel + 18;
       textLabelsLayer.appendChild(valueLabel);
@@ -970,11 +973,7 @@ for (let row = 0; row < rows; row++) {
       textLabelsLayer.appendChild(propLabel);
 
       // Property value (bold, colored)
-      const valueLabel = createText(span.value, 10, true, {
-        r: 0.4,
-        g: 0.2,
-        b: 0.8,
-      });
+     const valueLabel = createText(span.value, 11, true, currentTheme.primary);
       valueLabel.x = xLevel + 27 - valueLabel.width / 2;
       valueLabel.y = centerY + 2;
       textLabelsLayer.appendChild(valueLabel);
@@ -1020,7 +1019,7 @@ for (let row = 0; row < rows; row++) {
 
 figma.ui.onmessage = async (msg) => {
   if (msg.type === "generate-table") {
-    const { componentId, spacing, enabledProperties } = msg;
+  const { componentId, spacing, enabledProperties, theme } = msg;
 
     // CHECK PAYMENT STATUS AND USAGE COUNT - ADD THIS BLOCK
     const usageCount = (await figma.clientStorage.getAsync("usage-count")) || 0;
@@ -1091,7 +1090,7 @@ figma.ui.onmessage = async (msg) => {
       );
 
       const combinations = generateCombinations(properties);
-     await createInstancesTable(componentId, combinations, spacing, msg.layoutDirection);
+     await createInstancesTable(componentId, combinations, spacing, msg.layoutDirection, theme); // Pass theme
 
       // INCREMENT USAGE COUNT AND NOTIFY - ADD THIS BLOCK
       if (figma.payments.status.type === "UNPAID") {
@@ -1112,7 +1111,9 @@ figma.ui.onmessage = async (msg) => {
       } else {
         figma.notify(`Generated component table!`);
       }
-
+ figma.ui.postMessage({
+      type: "table-generation-complete"
+    });
       // Send usage status to UI
       figma.ui.postMessage({
         type: "update-usage",

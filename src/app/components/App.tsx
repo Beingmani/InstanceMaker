@@ -116,38 +116,83 @@ const App: React.FC = () => {
   const [layoutDirection, setLayoutDirection] = useState<
     "optimal" | "horizontal" | "vertical"
   >("optimal");
-
+  const [customColor, setCustomColor] = useState<string>("#6644CC");
+  const [selectedTheme, setSelectedTheme] = useState<string>("purple");
+const [isGenerating, setIsGenerating] = useState(false);
   const FREE_USAGE_LIMIT = 10;
+  const themes = {
+  purple: {
+    name: "Purple",
+    primary: { r: 0.4, g: 0.2, b: 0.8 },
+    secondary: { r: 0.94, g: 0.94, b: 0.98 },
+    stroke: { r: 0.85, g: 0.85, b: 0.9 },
+    accent: { r: 0.7, g: 0.4, b: 1 }
+  },
+  blue: {
+    name: "Ocean Blue",
+    primary: { r: 0.2, g: 0.4, b: 0.8 },
+    secondary: { r: 0.94, g: 0.96, b: 0.98 },
+    stroke: { r: 0.85, g: 0.88, b: 0.9 },
+    accent: { r: 0.4, g: 0.6, b: 1 }
+  },
+  green: {
+    name: "Forest Green",
+    primary: { r: 0.2, g: 0.6, b: 0.3 },
+    secondary: { r: 0.94, g: 0.98, b: 0.95 },
+    stroke: { r: 0.85, g: 0.9, b: 0.87 },
+    accent: { r: 0.3, g: 0.8, b: 0.4 }
+  },
+  orange: {
+    name: "Sunset Orange",
+    primary: { r: 0.8, g: 0.4, b: 0.1 },
+    secondary: { r: 0.98, g: 0.96, b: 0.94 },
+    stroke: { r: 0.9, g: 0.88, b: 0.85 },
+    accent: { r: 1, g: 0.6, b: 0.2 }
+  },
+    custom: {
+    name: "Custom",
+    primary: { r: 0.4, g: 0.27, b: 0.8 }, // Will be dynamically updated
+    secondary: { r: 0.95, g: 0.95, b: 0.98 },
+    stroke: { r: 0.9, g: 0.9, b: 0.92 },
+    accent: { r: 0.6, g: 0.4, b: 0.9 }
+  }
+};
 
-  useEffect(() => {
-    // Check payment status on mount
-    parent.postMessage(
-      {
-        pluginMessage: {
-          type: "check-payment-status",
-        },
+
+useEffect(() => {
+  // Check payment status on mount
+  parent.postMessage(
+    {
+      pluginMessage: {
+        type: "check-payment-status",
       },
-      "*"
-    );
+    },
+    "*"
+  );
 
-    // Listen for messages from the plugin controller
-    window.onmessage = (event) => {
-      const { type, data, usageCount, isPaid } = event.data.pluginMessage || {};
+  // Listen for messages from the plugin controller
+  window.onmessage = (event) => {
+    const { type, data, usageCount, isPaid } = event.data.pluginMessage || {};
 
-      if (type === "component-selected") {
-        setSelectedComponent(data);
-      } else if (type === "selection-cleared") {
-        setSelectedComponent(null);
-        setToggledProperties({});
-      } else if (type === "update-usage") {
-        // Handle payment status updates - fix the data structure
-        setUsageCount(usageCount !== undefined ? usageCount : data?.usageCount);
-        setIsPaid(isPaid !== undefined ? isPaid : data?.isPaid);
-       
-      }
-    };
-  }, []);
+    if (type === "component-selected") {
+      setSelectedComponent(data);
+    } else if (type === "selection-cleared") {
+      setSelectedComponent(null);
+      setToggledProperties({});
+    } else if (type === "update-usage") {
+      setUsageCount(usageCount !== undefined ? usageCount : data?.usageCount);
+      setIsPaid(isPaid !== undefined ? isPaid : data?.isPaid);
+    } else if (type === "table-generation-complete") {
+      console.log("Received table-generation-complete"); // Add this for debugging
+      setIsGenerating(false);
+    }
+  };
 
+  // Cleanup
+  return () => {
+    window.onmessage = null;
+  };
+}, []);
   // Generate preview data for the selected component
   useEffect(() => {
     if (selectedComponent) {
@@ -176,6 +221,44 @@ const App: React.FC = () => {
       "*"
     );
   };
+
+  // Function to convert hex to RGB
+const hexToRgb = (hex: string) => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? {
+    r: parseInt(result[1], 16) / 255,
+    g: parseInt(result[2], 16) / 255,
+    b: parseInt(result[3], 16) / 255
+  } : { r: 0.4, g: 0.27, b: 0.8 };
+};
+
+// Function to generate theme colors based on primary color
+const generateCustomTheme = (primaryColor: string) => {
+  const primary = hexToRgb(primaryColor);
+  
+  // Generate secondary color (very light version of primary)
+  const secondary = {
+    r: 0.9 + (primary.r * 0.1),
+    g: 0.9 + (primary.g * 0.1),
+    b: 0.9 + (primary.b * 0.1)
+  };
+  
+  // Generate stroke color (light version of primary)
+  const stroke = {
+    r: 0.8 + (primary.r * 0.15),
+    g: 0.8 + (primary.g * 0.15),
+    b: 0.8 + (primary.b * 0.15)
+  };
+  
+  // Generate accent color (lighter version of primary)
+  const accent = {
+    r: Math.min(1, primary.r + 0.2),
+    g: Math.min(1, primary.g + 0.2),
+    b: Math.min(1, primary.b + 0.2)
+  };
+  
+  return { primary, secondary, stroke, accent };
+};
 
   const formatNumber = (num) => {
     if (num >= 1000000000) {
@@ -284,33 +367,49 @@ const App: React.FC = () => {
     );
   };
 
-  const handleGenerate = () => {
-    if (selectedComponent) {
-      const enabledProperties = selectedComponent.properties
-        .filter((prop) => {
-          // Apply global filters
-          if (prop.type === "BOOLEAN" && !includeBooleans) return false;
-          if (prop.type === "EXPOSED_INSTANCE" && !includeExposedInstances)
-            return false;
-          // Apply individual toggles
-          return toggledProperties[prop.name];
-        })
-        .map((prop) => prop.name);
+ const handleGenerate = () => {
+  setIsGenerating(true);
+  
+  if (selectedComponent) {
+    const enabledProperties = selectedComponent.properties
+      .filter((prop) => {
+        // Apply global filters
+        if (prop.type === "BOOLEAN" && !includeBooleans) return false;
+        if (prop.type === "EXPOSED_INSTANCE" && !includeExposedInstances)
+          return false;
+        // Apply individual toggles
+        return toggledProperties[prop.name];
+      })
+      .map((prop) => prop.name);
 
-      parent.postMessage(
-        {
-          pluginMessage: {
-            type: "generate-table",
-            componentId: selectedComponent.id,
-            spacing: spacing,
-            enabledProperties: enabledProperties,
-            layoutDirection: layoutDirection,
-          },
-        },
-        "*"
-      );
+    let themeToSend;
+    if (selectedTheme === 'custom') {
+      themeToSend = {
+        name: "Custom",
+        ...generateCustomTheme(customColor)
+      };
+    } else {
+      themeToSend = themes[selectedTheme];
     }
-  };
+
+    parent.postMessage(
+      {
+        pluginMessage: {
+          type: "generate-table",
+          componentId: selectedComponent.id,
+          spacing: spacing,
+          enabledProperties: enabledProperties,
+          layoutDirection: layoutDirection,
+          theme: themeToSend
+        },
+      },
+      "*"
+    );
+  } else {
+    // If no component selected, stop loading immediately
+    setIsGenerating(false);
+  }
+};
 
   // Generate table columns dynamically based on component properties
   const selectedComponentData = selectedComponent;
@@ -374,6 +473,102 @@ const App: React.FC = () => {
         </div> */}
 
         {!isPaid && <LoopingUpgradeButton onClick={initiatePayment} />}
+
+<div
+  style={{
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: "12px"
+  }}
+>
+  <Text
+    style={{
+      fontSize: "12px",
+      color: "#888",
+      fontWeight: "bold",
+      display: "block"
+    }}
+  >
+    Table Theme
+  </Text>
+  
+  <div style={{ display: "flex", gap: 8 }}>
+    {Object.entries(themes).slice(0, 4).map(([key, theme]) => (
+      <Tooltip key={key} title={theme.name}>
+        <Button
+          type={selectedTheme === key ? 'primary' : 'dashed'}
+          onClick={() => setSelectedTheme(key)}
+          style={{
+            width: "32px",
+            height: "32px",
+            padding: "4px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center"
+          }}
+        >
+          <div
+            style={{
+              width: "16px",
+              height: "16px",
+              borderRadius: "3px",
+              backgroundColor: `rgb(${Math.floor(theme.primary.r * 255)}, ${Math.floor(theme.primary.g * 255)}, ${Math.floor(theme.primary.b * 255)})`,
+              border: "1px solid rgba(0,0,0,0.1)"
+            }}
+          />
+        </Button>
+      </Tooltip>
+    ))}
+    
+    {/* Custom Color Button */}
+    <Tooltip title="Custom Color">
+      <Button
+        type={selectedTheme === 'custom' ? 'primary' : 'dashed'}
+        onClick={() => setSelectedTheme('custom')}
+        style={{
+          width: "32px",
+          height: "32px",
+          padding: "4px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          position: "relative"
+        }}
+      >
+        <div
+          style={{
+            width: "16px",
+            height: "16px",
+            borderRadius: "3px",
+            background: `linear-gradient(45deg, ${customColor}, ${customColor}dd)`,
+            border: "1px solid rgba(0,0,0,0.1)",
+            position: "relative"
+          }}
+        >
+          {/* Color picker input overlay */}
+          <input
+            type="color"
+            value={customColor}
+            onChange={(e) => {
+              setCustomColor(e.target.value);
+              setSelectedTheme('custom');
+            }}
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: "100%",
+              height: "100%",
+              opacity: 0,
+              cursor: "pointer"
+            }}
+          />
+        </div>
+      </Button>
+    </Tooltip>
+  </div>
+</div>
          <div
           style={{
             display: "flex",
@@ -406,7 +601,7 @@ const App: React.FC = () => {
 <Tooltip title="Horizontal">
   <Button
     type={layoutDirection === 'horizontal' ? 'primary' : 'dashed'}
-    icon={<ArrowDownOutlined />}
+    icon={<ArrowRightOutlined />}
     onClick={() => setLayoutDirection('horizontal')}
   />
 </Tooltip>
@@ -414,7 +609,7 @@ const App: React.FC = () => {
 <Tooltip title="Vertical">
   <Button
     type={layoutDirection === 'vertical' ? 'primary' : 'dashed'}
-    icon={<ArrowRightOutlined />}
+    icon={<ArrowDownOutlined />}
     onClick={() => setLayoutDirection('vertical')}
   />
 </Tooltip>
@@ -826,37 +1021,42 @@ const App: React.FC = () => {
             {isPaid ? "Premium" : "Free"}
           </Tag>
           <Button
-            type="primary"
-            onClick={handleGenerate}
-            disabled={
-              !selectedComponent ||
-              calculateCombinations() === 0 ||
-              (typeof usageCount === "number" &&
-                usageCount >= FREE_USAGE_LIMIT &&
-                !isPaid)
-            }
-            icon={<PlayCircleOutlined />}
-            style={{ width: "100%" }} // Make button full width
-          >
-            {(() => {
-              if (
-                !isPaid &&
-                typeof usageCount === "number" &&
-                usageCount >= FREE_USAGE_LIMIT
-              ) {
-                return "Upgrade Required";
-              }
-              if (!selectedComponent) {
-                return "Select Component";
-              }
-              if (calculateCombinations() === 0) {
-                return selectedComponent?.properties.length === 0
-                  ? "No Properties Found"
-                  : "Enable Properties Above";
-              }
-              return "Generate Table";
-            })()}
-          </Button>
+  type="primary"
+  onClick={handleGenerate}
+  loading={isGenerating} // Add loading prop
+  disabled={
+    isGenerating || // Disable when generating
+    !selectedComponent ||
+    calculateCombinations() === 0 ||
+    (typeof usageCount === "number" &&
+      usageCount >= FREE_USAGE_LIMIT &&
+      !isPaid)
+  }
+  icon={!isGenerating ? <PlayCircleOutlined /> : undefined} // Hide icon when loading
+  style={{ width: "100%" }}
+>
+  {(() => {
+    if (isGenerating) {
+      return "Generating Table...";
+    }
+    if (
+      !isPaid &&
+      typeof usageCount === "number" &&
+      usageCount >= FREE_USAGE_LIMIT
+    ) {
+      return "Upgrade Required";
+    }
+    if (!selectedComponent) {
+      return "Select Component";
+    }
+    if (calculateCombinations() === 0) {
+      return selectedComponent?.properties.length === 0
+        ? "No Properties Found"
+        : "Enable Properties Above";
+    }
+    return "Generate Table";
+  })()}
+</Button>
 
           {/* Premium indicator button */}
           <Button
