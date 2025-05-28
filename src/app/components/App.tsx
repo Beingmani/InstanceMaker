@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import LoopingUpgradeButton from './LoopingUpgradeButton';
+import LoopingUpgradeButton from "./LoopingUpgradeButton";
 import {
   Button,
   Select,
@@ -11,21 +11,23 @@ import {
   Tag,
   Switch,
   Alert,
-  Progress,
+  Progress,Tooltip
 } from "antd";
-import {
-  BooleanIcon,
-  VariantIcon,
-  NestedIcon
-
-} from "./customIcons";
+import { BooleanIcon, VariantIcon, NestedIcon } from "./customIcons";
 import {
   PlayCircleOutlined,
+  ArrowRightOutlined,
+  ArrowLeftOutlined,
+  StarOutlined,
   CloseOutlined,
   UnlockOutlined,
-  CrownOutlined, UserOutlined,
+  UserOutlined,
   LockOutlined,
   CrownOutlined,
+  LeftOutlined,
+  RightOutlined,
+  ArrowDownOutlined,
+  BorderOuterOutlined,
 } from "@ant-design/icons";
 
 const { Title, Text } = Typography;
@@ -54,19 +56,23 @@ const UsageAlert = ({
 
   const renderUsageText = () => {
     if (isPaid) {
-   return (
-      <span style={{ fontSize: "12px", color: "#52c41a" }}>
-        Unlimited
-      </span>
-    );
+      return (
+        <span style={{ fontSize: "12px", color: "#52c41a" }}>Unlimited</span>
+      );
     }
     if (showUpgrade) {
       return "No free generations";
     }
-       return (
+    return (
       <span>
-    <span style={{ fontSize: "18px", fontWeight: "bold", color: "#1890ff" }}>{usageCount}</span>
-        <span style={{ fontSize: "12px", fontWeight: "normal" }}>/{FREE_USAGE_LIMIT}</span>
+        <span
+          style={{ fontSize: "18px", fontWeight: "bold", color: "#1890ff" }}
+        >
+          {usageCount}
+        </span>
+        <span style={{ fontSize: "12px", fontWeight: "normal" }}>
+          /{FREE_USAGE_LIMIT}
+        </span>
       </span>
     );
   };
@@ -80,12 +86,11 @@ const UsageAlert = ({
         padding: "8px 12px",
       }}
     >
-      
-      <Text 
-        style={{ 
+      <Text
+        style={{
           fontSize: "12px",
           color: showUpgrade ? "#ff4d4f" : "inherit",
-          fontWeight: showUpgrade ? 500 : "normal"
+          fontWeight: showUpgrade ? 500 : "normal",
         }}
       >
         {renderUsageText()}
@@ -108,6 +113,10 @@ const App: React.FC = () => {
   >({});
   const [usageCount, setUsageCount] = useState<number | "unlimited">(0);
   const [isPaid, setIsPaid] = useState<boolean>(false);
+  const [layoutDirection, setLayoutDirection] = useState<
+    "optimal" | "horizontal" | "vertical"
+  >("optimal");
+
   const FREE_USAGE_LIMIT = 10;
 
   useEffect(() => {
@@ -134,7 +143,7 @@ const App: React.FC = () => {
         // Handle payment status updates - fix the data structure
         setUsageCount(usageCount !== undefined ? usageCount : data?.usageCount);
         setIsPaid(isPaid !== undefined ? isPaid : data?.isPaid);
-        console.log("Payment status updated:", { usageCount, isPaid }); // Debug log
+       
       }
     };
   }, []);
@@ -169,21 +178,21 @@ const App: React.FC = () => {
   };
 
   const formatNumber = (num) => {
-  if (num >= 1000000000) {
-    return (num / 1000000000).toFixed(1).replace(/\.0$/, '') + 'B';
-  }
-  if (num >= 1000000) {
-    return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
-  }
-  if (num >= 1000) {
-    return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
-  }
-  return num.toString();
-};
+    if (num >= 1000000000) {
+      return (num / 1000000000).toFixed(1).replace(/\.0$/, "") + "B";
+    }
+    if (num >= 1000000) {
+      return (num / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
+    }
+    if (num >= 1000) {
+      return (num / 1000).toFixed(1).replace(/\.0$/, "") + "k";
+    }
+    return num.toString();
+  };
 
-const cleanPropertyName = (name) => {
-  return name.split('#')[0];
-};
+  const cleanPropertyName = (name) => {
+    return name.split("#")[0];
+  };
 
   const toggleDevPaymentStatus = () => {
     parent.postMessage(
@@ -295,13 +304,13 @@ const cleanPropertyName = (name) => {
             componentId: selectedComponent.id,
             spacing: spacing,
             enabledProperties: enabledProperties,
+            layoutDirection: layoutDirection,
           },
         },
         "*"
       );
     }
   };
-
 
   // Generate table columns dynamically based on component properties
   const selectedComponentData = selectedComponent;
@@ -355,8 +364,6 @@ const cleanPropertyName = (name) => {
   return (
     <div style={{ padding: "12px", fontFamily: "Inter, sans-serif" }}>
       <Space direction="vertical" size={4} style={{ width: "100%" }}>
-   
-       
         {/* <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
           <Button size="small" onClick={toggleDevPaymentStatus}>
             Toggle Payment
@@ -366,342 +373,412 @@ const cleanPropertyName = (name) => {
           </Button>
         </div> */}
 
-       
-{!isPaid && (
-  <LoopingUpgradeButton onClick={initiatePayment} />
-)}
- <div style={{ display: "flex", gap: "8px", marginBottom: "12px", justifyContent: "space-between",alignItems: "baseline"}}>
- <Text
-  style={{
-    fontSize: "12px",
-    color: "#888",
-    marginTop: "12px",
-    display: "block",
-    fontWeight: "bold",
-  }}
->
-Preview Window
-</Text>
- <UsageAlert
+        {!isPaid && <LoopingUpgradeButton onClick={initiatePayment} />}
+         <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginTop:"12px"
+          }}
+        >
+          <Text
+            style={{
+              fontSize: "12px",
+              color: "#888",
+              marginTop: "12px",
+              marginBottom: "8px",
+              display: "block",
+              fontWeight: "bold",
+            }}
+          >
+            Layout Direction
+          </Text>
+          <div style={{ display: "flex", gap: 8 }}>
+           <Tooltip title="Auto-Optimal">
+  <Button
+    type={layoutDirection === 'optimal' ? 'primary' : 'dashed'}
+    icon={<BorderOuterOutlined />}
+    onClick={() => setLayoutDirection('optimal')}
+  />
+</Tooltip>
+
+<Tooltip title="Horizontal">
+  <Button
+    type={layoutDirection === 'horizontal' ? 'primary' : 'dashed'}
+    icon={<ArrowDownOutlined />}
+    onClick={() => setLayoutDirection('horizontal')}
+  />
+</Tooltip>
+
+<Tooltip title="Vertical">
+  <Button
+    type={layoutDirection === 'vertical' ? 'primary' : 'dashed'}
+    icon={<ArrowRightOutlined />}
+    onClick={() => setLayoutDirection('vertical')}
+  />
+</Tooltip>
+          </div>
+        </div>
+        <div
+          style={{
+            display: "flex",
+            gap: "8px",
+            marginBottom: "12px",
+            justifyContent: "space-between",
+            alignItems: "baseline",
+          }}
+        >
+          <Text
+            style={{
+              fontSize: "12px",
+              color: "#888",
+              marginTop: "12px",
+              display: "block",
+              fontWeight: "bold",
+            }}
+          >
+            Preview Window
+          </Text>
+          <UsageAlert
             isPaid={isPaid}
             usageCount={usageCount}
             FREE_USAGE_LIMIT={FREE_USAGE_LIMIT}
             usagePercentage={usagePercentage}
             initiatePayment={initiatePayment}
           />
-          </div>
-      <Card
-        style={{
-          position: "relative",
-          border: "1px dashed #d9d9d9",
-          backgroundImage: "radial-gradient(#e0e0e0 1px, transparent 1px)",
-          backgroundSize: "16px 16px",
-          height: 150,
-          padding: 0,
-        }}
-        bodyStyle={{
-          width: "100%",
-          height: "100%",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          textAlign: "center",
-        }}
-      >
+        </div>
+       
+        <Card
+          style={{
+            position: "relative",
+            border: "1px dashed #d9d9d9",
+            backgroundImage: "radial-gradient(#e0e0e0 1px, transparent 1px)",
+            backgroundSize: "16px 16px",
+            height: 150,
+            padding: 0,
+          }}
+          bodyStyle={{
+            width: "100%",
+            height: "100%",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            textAlign: "center",
+          }}
+        >
+          {selectedComponent &&
+            (() => {
+              const totalBooleans =
+                selectedComponentData?.properties.filter(
+                  (p) => p.type === "BOOLEAN"
+                ).length || 0;
+              const totalExposed =
+                selectedComponentData?.properties.filter(
+                  (p) => p.type === "EXPOSED_INSTANCE"
+                ).length || 0;
 
+              const hiddenBooleans = !includeBooleans ? totalBooleans : 0;
+              const hiddenExposed = !includeExposedInstances ? totalExposed : 0;
 
-{selectedComponent && (() => {
-  const totalBooleans = selectedComponentData?.properties.filter(p => p.type === "BOOLEAN").length || 0;
-  const totalExposed = selectedComponentData?.properties.filter(p => p.type === "EXPOSED_INSTANCE").length || 0;
-  
-  const hiddenBooleans = !includeBooleans ? totalBooleans : 0;
-  const hiddenExposed = !includeExposedInstances ? totalExposed : 0;
-  
-  const parts = [];
-  const statusParts = [];
-  
-  // ✅ NEW - Show what's hidden
-  if (hiddenBooleans > 0) parts.push(`${hiddenBooleans} Boolean`);
-  if (hiddenExposed > 0) parts.push(`${hiddenExposed} Nested`);
-  
-  // ✅ NEW - Show what doesn't exist
-  if (totalBooleans === 0 && !includeBooleans) statusParts.push("No Boolean ");
-  if (totalExposed === 0 && !includeExposedInstances) statusParts.push("No Nested ");
-  
-  // Combine hidden and missing info
-  const allParts = [...parts];
-  if (parts.length > 0 && statusParts.length > 0) {
-    allParts.push(`(${statusParts.join(', ')}  Available)`);
-  } else if (parts.length === 0 && statusParts.length > 0) {
-    allParts.push(`${statusParts.join(', ')}  Available`);
-  }
-  
-  // Determine tag color and message
-  let color = "orange";
-  let message = "";
-  
-  if (parts.length > 0) {
-    // Something is hidden
-    color = "orange";
-    message = `${parts.join(', ')} Hidden`;
-    if (statusParts.length > 0) {
-      message += ` • ${statusParts.join(', ')}  Available`;
-    }
-  } else if (statusParts.length > 0) {
-    // Nothing hidden, but some types don't exist
-    color = "cyan";
-    message = `${statusParts.join(', ')} Properties Available`;
-  }
-  
-  return message && (
-    <div
-      style={{
-        position: "absolute",
-        top: "12px",
-        left: "12px",
-        zIndex: 1,
-      }}
-    >
-      <Tag color={color} size="small">
-        {message}
-      </Tag>
-    </div>
-  );
-})()}
-        
-{selectedComponent && (
-    <div
-      style={{
-        position: "absolute",
-        bottom: "12px",
-        left: "12px",
-        zIndex: 1,
-      }}
-    >
-      <Tag color="blue">
-       Found {selectedComponent.properties.length} Properties
-      </Tag>
-    </div>
-  )}
-   {/* Total combinations in bottom-right corner */}
-  {selectedComponent && (
-    <div
-      style={{
-        position: "absolute",
-        bottom: "12px",
-        right: "12px",
-        zIndex: 1,
-      }}
-    >
-      <Tag color="green">
-        Total {formatNumber(calculateCombinations())} Combinations
-      </Tag>
-    </div>
-  )}
+              const parts = [];
+              const statusParts = [];
 
-  {/* Center content */}
-  {!selectedComponent ? (
-    <div style={{ padding: "20px" }}>
+              // ✅ NEW - Show what's hidden
+              if (hiddenBooleans > 0) parts.push(`${hiddenBooleans} Boolean`);
+              if (hiddenExposed > 0) parts.push(`${hiddenExposed} Nested`);
 
-        <Text type="secondary" style={{ maxWidth: 220, textAlign: "center" }}>
-            
-              Select Any component or an Instance from a canvas to generate combinations
-            
-          </Text>
-    </div>
-  ) : (
-    <div style={{ padding: "20px" }}>
-      <Text code style={{ fontSize: "16px", marginTop: "8px" }}>
-        {selectedComponent.name}
-      </Text>
-    </div>
-  )}
+              // ✅ NEW - Show what doesn't exist
+              if (totalBooleans === 0 && !includeBooleans)
+                statusParts.push("No Boolean ");
+              if (totalExposed === 0 && !includeExposedInstances)
+                statusParts.push("No Nested ");
 
+              // Combine hidden and missing info
+              const allParts = [...parts];
+              if (parts.length > 0 && statusParts.length > 0) {
+                allParts.push(`(${statusParts.join(", ")}  Available)`);
+              } else if (parts.length === 0 && statusParts.length > 0) {
+                allParts.push(`${statusParts.join(", ")}  Available`);
+              }
 
-      
-      </Card>
+              // Determine tag color and message
+              let color = "orange";
+              let message = "";
+
+              if (parts.length > 0) {
+                // Something is hidden
+                color = "orange";
+                message = `${parts.join(", ")} Hidden`;
+                if (statusParts.length > 0) {
+                  message += ` • ${statusParts.join(", ")}  Available`;
+                }
+              } else if (statusParts.length > 0) {
+                // Nothing hidden, but some types don't exist
+                color = "cyan";
+                message = `${statusParts.join(", ")} Properties Available`;
+              }
+
+              return (
+                message && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "12px",
+                      left: "12px",
+                      zIndex: 1,
+                    }}
+                  >
+                    <Tag color={color} size="small">
+                      {message}
+                    </Tag>
+                  </div>
+                )
+              );
+            })()}
+
+          {selectedComponent && (
+            <div
+              style={{
+                position: "absolute",
+                bottom: "12px",
+                left: "12px",
+                zIndex: 1,
+              }}
+            >
+              <Tag color="blue">
+                Found {selectedComponent.properties.length} Properties
+              </Tag>
+            </div>
+          )}
+          {/* Total combinations in bottom-right corner */}
+          {selectedComponent && (
+            <div
+              style={{
+                position: "absolute",
+                bottom: "12px",
+                right: "12px",
+                zIndex: 1,
+              }}
+            >
+              <Tag color="green">
+                Total {formatNumber(calculateCombinations())} Combinations
+              </Tag>
+            </div>
+          )}
+
+          {/* Center content */}
+          {!selectedComponent ? (
+            <div style={{ padding: "20px" }}>
+              <Text
+                type="secondary"
+                style={{ maxWidth: 220, textAlign: "center" }}
+              >
+                Select Any component or an Instance from a canvas to generate
+                combinations
+              </Text>
+            </div>
+          ) : (
+            <div style={{ padding: "20px" }}>
+              <Text code style={{ fontSize: "16px", marginTop: "8px" }}>
+                {selectedComponent.name}
+              </Text>
+            </div>
+          )}
+        </Card>
         {/* Component Properties Section */}
 
         <Text
-  style={{
-    fontSize: "12px",
-    color: "#888",
-    marginTop: "12px",
-    marginBottom: "8px",
-    display: "block",
-    fontWeight: "bold",
-  }}
->
-  Settings
-</Text>
+          style={{
+            fontSize: "12px",
+            color: "#888",
+            marginTop: "12px",
+            marginBottom: "8px",
+            display: "block",
+            fontWeight: "bold",
+          }}
+        >
+          Settings
+        </Text>
 
-   
-   <div style={{ display: "flex", flexDirection: "column" }}>
-  <div
-    style={{
-      display: "flex",
-      gap: "8px",
-     
-      justifyContent: "space-between",
-      alignItems: "center",
-    }}
-  >
-    <Text
-      style={{
-        fontSize: "12px",
-        color: "#888",
-        marginTop: "12px",
-      
-        display: "block",
-      }}
-    >
-      Boolen Properties
-    </Text>
-    <Space>
-      <Switch
-        checked={includeBooleans}
-        onChange={setIncludeBooleans}
-        size="small"
-      />
-    </Space>
-  </div>
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          <div
+            style={{
+              display: "flex",
+              gap: "8px",
 
-  <div
-    style={{
-      display: "flex",
-      gap: "8px",
-     
-      justifyContent: "space-between",
-      alignItems: "center",
-    }}
-  >
-    <Text
-      style={{
-        fontSize: "12px",
-        color: "#888",
-        marginTop: "12px",
-    
-        display: "block",
-      }}
-    >
-      Nested Instances
-    </Text>
-    <Space>
-      <Switch
-        checked={includeExposedInstances}
-        onChange={setIncludeExposedInstances}
-        size="small"
-      />
-    </Space>
-  </div>
-</div>
-  <Text
-  style={{
-    fontSize: "12px",
-    color: "#888",
-    marginTop: "12px",
-    marginBottom: "8px",
-    display: "block",
-    fontWeight: "bold",
-  }}
->
- Component Properties
-</Text>
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <Text
+              style={{
+                fontSize: "12px",
+                color: "#888",
+                marginTop: "12px",
 
+                display: "block",
+              }}
+            >
+              Boolen Properties
+            </Text>
+            <Space>
+              <Switch
+                checked={includeBooleans}
+                onChange={setIncludeBooleans}
+                size="small"
+              />
+            </Space>
+          </div>
 
+          <div
+            style={{
+              display: "flex",
+              gap: "8px",
 
-{selectedComponentData ? (
-  <Space direction="vertical" size={2} style={{ width: "100%" }}>
-    {(() => {
-      // Filter properties based on global settings
-      const filteredProperties = selectedComponentData.properties.filter((property) => {
-        if (property.type === "BOOLEAN" && !includeBooleans) return false;
-        if (property.type === "EXPOSED_INSTANCE" && !includeExposedInstances) return false;
-        return true;
-      });
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <Text
+              style={{
+                fontSize: "12px",
+                color: "#888",
+                marginTop: "12px",
 
-      // ✅ NEW - Check if there are any properties to show
-      if (filteredProperties.length === 0) {
-        return (
+                display: "block",
+              }}
+            >
+              Nested Instances
+            </Text>
+            <Space>
+              <Switch
+                checked={includeExposedInstances}
+                onChange={setIncludeExposedInstances}
+                size="small"
+              />
+            </Space>
+          </div>
+        </div>
+        <Text
+          style={{
+            fontSize: "12px",
+            color: "#888",
+            marginTop: "12px",
+            marginBottom: "8px",
+            display: "block",
+            fontWeight: "bold",
+          }}
+        >
+          Component Properties
+        </Text>
+
+        {selectedComponentData ? (
+          <Space direction="vertical" size={2} style={{ width: "100%" }}>
+            {(() => {
+              // Filter properties based on global settings
+              const filteredProperties =
+                selectedComponentData.properties.filter((property) => {
+                  if (property.type === "BOOLEAN" && !includeBooleans)
+                    return false;
+                  if (
+                    property.type === "EXPOSED_INSTANCE" &&
+                    !includeExposedInstances
+                  )
+                    return false;
+                  return true;
+                });
+
+              // ✅ NEW - Check if there are any properties to show
+              if (filteredProperties.length === 0) {
+                return (
+                  <Card style={{ marginTop: "16px" }}>
+                    <div style={{ textAlign: "center", padding: "20px" }}>
+                      <Text type="secondary" style={{ fontSize: "14px" }}>
+                        {selectedComponentData.properties.length === 0
+                          ? "This component has no configurable properties"
+                          : "No properties match current filter settings. Try enabling Boolean or Nested Instance properties above."}
+                      </Text>
+                    </div>
+                  </Card>
+                );
+              }
+
+              // Show properties if they exist
+              return (
+                <Card
+                  style={{ marginTop: "16px" }}
+                  bodyStyle={{ padding: "4px 2px" }}
+                >
+                  <Space
+                    direction="vertical"
+                    size={2}
+                    style={{ width: "100%" }}
+                  >
+                    {filteredProperties.map((property) => (
+                      <div
+                        key={property.name}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          padding: "8px 12px",
+                        }}
+                      >
+                        {/* Left side - Icon, Property name and type tag */}
+                        <Space align="center" size={2}>
+                          {/* Property type icon */}
+                          {property.type === "VARIANT" && <VariantIcon />}
+                          {property.type === "BOOLEAN" && <BooleanIcon />}
+                          {property.type === "EXPOSED_INSTANCE" && (
+                            <NestedIcon />
+                          )}
+
+                          <Text code>{cleanPropertyName(property.name)}</Text>
+                          <Tag
+                            size="small"
+                            color={
+                              property.type === "VARIANT"
+                                ? "blue"
+                                : property.type === "BOOLEAN"
+                                ? "green"
+                                : "purple"
+                            }
+                          >
+                            {property.type === "EXPOSED_INSTANCE"
+                              ? "Nested"
+                              : property.type.toLowerCase()}
+                          </Tag>
+                        </Space>
+
+                        {/* Right side - Toggle switch */}
+                        <Switch
+                          checked={toggledProperties[property.name] || false}
+                          onChange={(checked) =>
+                            setToggledProperties((prev) => ({
+                              ...prev,
+                              [property.name]: checked,
+                            }))
+                          }
+                          size="small"
+                        />
+                      </div>
+                    ))}
+                  </Space>
+                </Card>
+              );
+            })()}
+          </Space>
+        ) : (
           <Card style={{ marginTop: "16px" }}>
-            <div style={{ textAlign: "center", padding: "20px" }}>
+            <div style={{ textAlign: "center", padding: "12px" }}>
               <Text type="secondary" style={{ fontSize: "14px" }}>
-                {selectedComponentData.properties.length === 0 
-                  ? "This component has no configurable properties"
-                  : "No properties match current filter settings. Try enabling Boolean or Nested Instance properties above."
-                }
+                Component properties will appear here once you select a
+                component
               </Text>
             </div>
           </Card>
-        );
-      }
-
-      // Show properties if they exist
-      return (
-        <Card style={{ marginTop: "16px"}} bodyStyle={{ padding: "4px 2px" }}>
-          <Space direction="vertical" size={2} style={{ width: "100%" }}>
-            {filteredProperties.map((property) => (
-              <div
-                key={property.name}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  padding: "8px 12px",
-                }}
-              >
-                {/* Left side - Icon, Property name and type tag */}
-                <Space align="center" size={2}>
-                  {/* Property type icon */}
-                  {property.type === "VARIANT" && <VariantIcon />}
-                  {property.type === "BOOLEAN" && <BooleanIcon />}
-                  {property.type === "EXPOSED_INSTANCE" && <NestedIcon />}
-                  
-                  <Text code>{cleanPropertyName(property.name)}</Text>
-                  <Tag
-                    size="small"
-                    color={
-                      property.type === "VARIANT"
-                        ? "blue"
-                        : property.type === "BOOLEAN"
-                        ? "green"
-                        : "purple"
-                    }
-                  >
-                    {property.type === "EXPOSED_INSTANCE"
-                      ? "Nested"
-                      : property.type.toLowerCase()}
-                  </Tag>
-                </Space>
-
-                {/* Right side - Toggle switch */}
-                <Switch
-                  checked={toggledProperties[property.name] || false}
-                  onChange={(checked) =>
-                    setToggledProperties((prev) => ({
-                      ...prev,
-                      [property.name]: checked,
-                    }))
-                  }
-                  size="small"
-                />
-              </div>
-            ))}
-          </Space>
-        </Card>
-      );
-    })()}
-  </Space>
-) : (
-  <Card style={{ marginTop: "16px" }}>
-    <div style={{ textAlign: "center", padding: "12px" }}>
-      <Text type="secondary" style={{ fontSize: "14px" }}>
-        Component properties will appear here once you select a component
-      </Text>
-    </div>
-  </Card>
-)}
-
+        )}
 
         {previewData.length > 0 && (
           <Card title="Preview - All Property Combinations">
@@ -715,85 +792,87 @@ Preview Window
           </Card>
         )}
 
-       
+        <div
+          style={{
+            position: "fixed",
+            bottom: 0,
+            left: 0,
+            width: "92%",
+            padding: "12px 16px",
+            backgroundColor: "#fff",
+            borderTop: "1px solid #eee",
+            boxShadow: "0 -2px 8px rgba(0,0,0,0.05)",
+            zIndex: 10,
+            display: "flex",
+            justifyContent: "space-between",
+            gap: "12px", // Add gap between buttons
+          }}
+        >
+          <Tag
+            icon={isPaid ? <CrownOutlined /> : <UserOutlined />}
+            color={isPaid ? "gold" : "default"}
+            style={{
+              height: "32px", // Match button height
+              lineHeight: "30px", // Adjust for icon + text alignment
+              fontSize: "14px", // Match button font size
+              borderRadius: "6px", // Match button border radius
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+              flexShrink: 0, // Prevent shrinking
+              margin: 0,
+            }}
+          >
+            {isPaid ? "Premium" : "Free"}
+          </Tag>
+          <Button
+            type="primary"
+            onClick={handleGenerate}
+            disabled={
+              !selectedComponent ||
+              calculateCombinations() === 0 ||
+              (typeof usageCount === "number" &&
+                usageCount >= FREE_USAGE_LIMIT &&
+                !isPaid)
+            }
+            icon={<PlayCircleOutlined />}
+            style={{ width: "100%" }} // Make button full width
+          >
+            {(() => {
+              if (
+                !isPaid &&
+                typeof usageCount === "number" &&
+                usageCount >= FREE_USAGE_LIMIT
+              ) {
+                return "Upgrade Required";
+              }
+              if (!selectedComponent) {
+                return "Select Component";
+              }
+              if (calculateCombinations() === 0) {
+                return selectedComponent?.properties.length === 0
+                  ? "No Properties Found"
+                  : "Enable Properties Above";
+              }
+              return "Generate Table";
+            })()}
+          </Button>
 
-         <div
-  style={{
-    position: "fixed",
-    bottom: 0,
-    left: 0,
-    width: "92%",
-    padding: "12px 16px",
-    backgroundColor: "#fff",
-    borderTop: "1px solid #eee",
-    boxShadow: "0 -2px 8px rgba(0,0,0,0.05)",
-    zIndex: 10,
-    display: "flex",
-    justifyContent: "space-between",
-    gap: "12px", // Add gap between buttons
-  }}
->
-   <Tag
-    icon={isPaid ? <CrownOutlined /> : <UserOutlined />}
-    color={isPaid ? "gold" : "default"}
-    style={{
-      height: "32px", // Match button height
-      lineHeight: "30px", // Adjust for icon + text alignment
-      fontSize: "14px", // Match button font size
-      borderRadius: "6px", // Match button border radius
-      display: "flex",
-      alignItems: "center",
-      gap: "4px",
-      flexShrink: 0, // Prevent shrinking
-      margin:0
-    }}
-  >
-    {isPaid ? "Premium" : "Free"}
-  </Tag>
-  <Button
-    type="primary"
-    onClick={handleGenerate}
-    disabled={
-      !selectedComponent ||
-      calculateCombinations() === 0 ||
-      (typeof usageCount === "number" &&
-        usageCount >= FREE_USAGE_LIMIT &&
-        !isPaid)
-    }
-    icon={<PlayCircleOutlined />}
-    style={{ width: "100%" }} // Make button full width
-  >
-    {(() => {
-      if (!isPaid && typeof usageCount === "number" && usageCount >= FREE_USAGE_LIMIT) {
-        return "Upgrade Required";
-      }
-      if (!selectedComponent) {
-        return "Select Component";
-      }
-      if (calculateCombinations() === 0) {
-        return selectedComponent?.properties.length === 0 
-          ? "No Properties Found"
-          : "Enable Properties Above";
-      }
-      return "Generate Table";
-    })()}
-  </Button>
-
-  {/* Premium indicator button */}
-  <Button
-    icon={isPaid ? <UnlockOutlined /> : <LockOutlined />}
-    type="dashed"
-    onClick={!isPaid ? initiatePayment : undefined}
-    disabled={isPaid}
-    title={
-      isPaid ? "Premium unlocked" : "Upgrade to access unlimited generations"
-    }
-    style={{ flexShrink: 0 }} // Prevent this button from shrinking
-  />
-</div>
+          {/* Premium indicator button */}
+          <Button
+            icon={isPaid ? <UnlockOutlined /> : <LockOutlined />}
+            type="dashed"
+            onClick={!isPaid ? initiatePayment : undefined}
+            disabled={isPaid}
+            title={
+              isPaid
+                ? "Premium unlocked"
+                : "Upgrade to access unlimited generations"
+            }
+            style={{ flexShrink: 0 }} // Prevent this button from shrinking
+          />
+        </div>
         <div style={{ height: "60px" }}></div>
-
-        
       </Space>
     </div>
   );

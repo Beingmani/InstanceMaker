@@ -418,7 +418,8 @@ function applyExposedInstanceProperties(
 async function createInstancesTable(
   componentId: string,
   combinations: Record<string, string>[],
-  spacing: number = 20
+  spacing: number = 20,
+    layoutDirection?: string 
 ) {
     const node = await figma.getNodeByIdAsync(componentId);
   
@@ -528,7 +529,20 @@ async function createInstancesTable(
   });
 
   // 🧠 OPTIMAL STRATEGY: Find best aspect ratio distribution
-  function getOptimalDistribution() {
+function getOptimalDistribution(forcedDirection?: string) {
+     if (forcedDirection === "horizontal") {
+    return {
+      columnProperties: propertyKeys,
+      rowProperties: [],
+    };
+  }
+  
+  if (forcedDirection === "vertical") {
+    return {
+      columnProperties: propertyKeys.slice(0, 1),
+      rowProperties: propertyKeys.slice(1),
+    };
+  }
     if (propertyKeys.length === 1) {
       return {
         columnProperties: [propertyKeys[0]],
@@ -599,7 +613,7 @@ async function createInstancesTable(
     return bestDistribution;
   }
 
-  const optimalDistribution = getOptimalDistribution();
+  const optimalDistribution = getOptimalDistribution(layoutDirection);
   const columnProperties = optimalDistribution.columnProperties;
   const rowProperties = optimalDistribution.rowProperties;
 
@@ -816,9 +830,8 @@ for (let row = 0; row < rows; row++) {
     const cell = figma.createFrame();
     cell.name = `Cell ${row}-${col}`;
     
-    // ✅ Offset cells by -1px to overlap borders (not double them)
-    cell.x = dynamicLabelWidth + col * cellSize - Math.max(0, col - 0);
-    cell.y = dynamicHeaderHeight + row * cellSize - Math.max(0, row - 0);
+      cell.x = dynamicLabelWidth + col * cellSize;
+      cell.y = dynamicHeaderHeight + row * cellSize;
     
     cell.resize(cellSize, cellSize);
     cell.fills = [
@@ -1078,7 +1091,7 @@ figma.ui.onmessage = async (msg) => {
       );
 
       const combinations = generateCombinations(properties);
-      await createInstancesTable(componentId, combinations, spacing);
+     await createInstancesTable(componentId, combinations, spacing, msg.layoutDirection);
 
       // INCREMENT USAGE COUNT AND NOTIFY - ADD THIS BLOCK
       if (figma.payments.status.type === "UNPAID") {
