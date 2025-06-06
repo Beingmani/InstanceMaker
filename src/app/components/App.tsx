@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import LoopingUpgradeButton from "./LoopingUpgradeButton";
-
+import PropertyTable from "../components/propertyTable";
 import {
   Button,
   Select,
@@ -107,8 +107,10 @@ const App: React.FC = () => {
   const [spacing, setSpacing] = useState<number>(20);
   const [previewData, setPreviewData] = useState<any[]>([]);
   const [includeBooleans, setIncludeBooleans] = useState<boolean>(true);
+  const [isGeneratingPropertyTable, setIsGeneratingPropertyTable] = useState(false);
   const [includeExposedInstances, setIncludeExposedInstances] =
     useState<boolean>(false);
+    const [generatePropertyTable, setGeneratePropertyTable] = useState<boolean>(false);
   const [toggledProperties, setToggledProperties] = useState<
     Record<string, boolean>
   >({});
@@ -186,6 +188,9 @@ useEffect(() => {
     } else if (type === "table-generation-complete") {
   
       setIsGenerating(false);
+    }
+    else if (type === "property-table-generation-complete") {  // ADD THIS
+      setIsGeneratingPropertyTable(false);
     }
   };
 
@@ -368,6 +373,38 @@ const generateCustomTheme = (primaryColor: string) => {
     );
   };
 
+const handleGeneratePropertyTable = () => {
+  setIsGeneratingPropertyTable(true);
+  
+  if (selectedComponent) {
+    // Prepare theme data
+    let themeToSend;
+    if (selectedTheme === 'custom') {
+      themeToSend = {
+        name: "Custom",
+        ...generateCustomTheme(customColor)
+      };
+    } else {
+      themeToSend = themes[selectedTheme];
+    }
+
+    parent.postMessage(
+      {
+        pluginMessage: {
+          type: "generate-property-table",
+          componentId: selectedComponent.id,
+          componentName: selectedComponent.name,
+          properties: selectedComponent.properties,
+          theme: themeToSend // Add theme support
+        },
+      },
+      "*"
+    );
+  } else {
+    setIsGeneratingPropertyTable(false);
+  }
+};
+
  const handleGenerate = () => {
   setIsGenerating(true);
   
@@ -401,7 +438,8 @@ const generateCustomTheme = (primaryColor: string) => {
           spacing: spacing,
           enabledProperties: enabledProperties,
           layoutDirection: layoutDirection,
-          theme: themeToSend
+          theme: themeToSend,
+          generatePropertyTable:generatePropertyTable
         },
       },
       "*"
@@ -464,14 +502,14 @@ const generateCustomTheme = (primaryColor: string) => {
   return (
     <div style={{ padding: "12px", fontFamily: "Inter, sans-serif" }}>
       <Space direction="vertical" size={4} style={{ width: "100%" }}>
-        {/* <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
+        <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
           <Button size="small" onClick={toggleDevPaymentStatus}>
             Toggle Payment
           </Button>
           <Button size="small" onClick={resetUsageCount}>
             Reset Usage
           </Button>
-        </div> */}
+        </div>
 
         {!isPaid && <LoopingUpgradeButton onClick={initiatePayment} />}
        <div
@@ -987,7 +1025,35 @@ const generateCustomTheme = (primaryColor: string) => {
             />
           </Card>
         )}
+   
 
+
+<div
+  style={{
+    display: "flex",
+    gap: "8px",
+    justifyContent: "space-between",
+    alignItems: "center",
+  }}
+>
+  <Text
+    style={{
+      fontSize: "12px",
+      color: "#888",
+      marginTop: "12px",
+      display: "block",
+    }}
+  >
+    Generate Property Table
+  </Text>
+  <Space>
+    <Switch
+      checked={generatePropertyTable}
+      onChange={setGeneratePropertyTable}
+      size="small"
+    />
+  </Space>
+</div>
         <div
           style={{
             position: "fixed",

@@ -1,5 +1,5 @@
 // This file handles the Figma API interactions
-
+import {createPropertyDocumentationTable, handlePropertyTableMessage } from './propertyTableController';
 figma.showUI(__html__, { width: 400, height: 600 });
 
 // Add this at the top after imports
@@ -1023,7 +1023,7 @@ for (let row = 0; row < rows; row++) {
 
 figma.ui.onmessage = async (msg) => {
   if (msg.type === "generate-table") {
-  const { componentId, spacing, enabledProperties, theme } = msg;
+  const { componentId, spacing, enabledProperties, theme, generatePropertyTable } = msg;
 
     // CHECK PAYMENT STATUS AND USAGE COUNT - ADD THIS BLOCK
     const usageCount = (await figma.clientStorage.getAsync("usage-count")) || 0;
@@ -1096,6 +1096,10 @@ figma.ui.onmessage = async (msg) => {
       const combinations = generateCombinations(properties);
      await createInstancesTable(componentId, combinations, spacing, msg.layoutDirection, theme); // Pass theme
 
+     if (generatePropertyTable) {
+  const componentName = node.name;
+  await createPropertyDocumentationTable(componentName, allProperties, theme);
+}
       // INCREMENT USAGE COUNT AND NOTIFY - ADD THIS BLOCK
       if (figma.payments.status.type === "UNPAID") {
         const newCount = usageCount + 1;
@@ -1129,6 +1133,8 @@ figma.ui.onmessage = async (msg) => {
       });
       // END USAGE COUNT UPDATE
     }
+  } else if (msg.type === "generate-property-table") {
+    await handlePropertyTableMessage(msg);
   }
 
   // ADD THESE NEW MESSAGE HANDLERS
