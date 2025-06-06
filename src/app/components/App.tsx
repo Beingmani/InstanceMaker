@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import LoopingUpgradeButton from "./LoopingUpgradeButton";
+
 import {
   Button,
   Select,
@@ -183,7 +184,7 @@ useEffect(() => {
       setUsageCount(usageCount !== undefined ? usageCount : data?.usageCount);
       setIsPaid(isPaid !== undefined ? isPaid : data?.isPaid);
     } else if (type === "table-generation-complete") {
-      console.log("Received table-generation-complete"); // Add this for debugging
+  
       setIsGenerating(false);
     }
   };
@@ -473,7 +474,52 @@ const generateCustomTheme = (primaryColor: string) => {
         </div> */}
 
         {!isPaid && <LoopingUpgradeButton onClick={initiatePayment} />}
+       <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginTop:"12px"
+          }}
+        >
+          <Text
+            style={{
+              fontSize: "12px",
+              color: "#888",
+              marginTop: "12px",
+            
+              display: "block",
+              fontWeight: "bold",
+            }}
+          >
+            Layout Direction
+          </Text>
+          <div style={{ display: "flex", gap: 8 }}>
+           <Tooltip title="Auto-Optimal">
+  <Button
+    type={layoutDirection === 'optimal' ? 'primary' : 'dashed'}
+    icon={<BorderOuterOutlined />}
+    onClick={() => setLayoutDirection('optimal')}
+  />
+</Tooltip>
 
+<Tooltip title="Horizontal">
+  <Button
+    type={layoutDirection === 'horizontal' ? 'primary' : 'dashed'}
+    icon={<ArrowRightOutlined />}
+    onClick={() => setLayoutDirection('horizontal')}
+  />
+</Tooltip>
+
+<Tooltip title="Vertical">
+  <Button
+    type={layoutDirection === 'vertical' ? 'primary' : 'dashed'}
+    icon={<ArrowDownOutlined />}
+    onClick={() => setLayoutDirection('vertical')}
+  />
+</Tooltip>
+          </div>
+        </div>
 <div
   style={{
     display: "flex",
@@ -569,52 +615,7 @@ const generateCustomTheme = (primaryColor: string) => {
     </Tooltip>
   </div>
 </div>
-         <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginTop:"12px"
-          }}
-        >
-          <Text
-            style={{
-              fontSize: "12px",
-              color: "#888",
-              marginTop: "12px",
-              marginBottom: "8px",
-              display: "block",
-              fontWeight: "bold",
-            }}
-          >
-            Layout Direction
-          </Text>
-          <div style={{ display: "flex", gap: 8 }}>
-           <Tooltip title="Auto-Optimal">
-  <Button
-    type={layoutDirection === 'optimal' ? 'primary' : 'dashed'}
-    icon={<BorderOuterOutlined />}
-    onClick={() => setLayoutDirection('optimal')}
-  />
-</Tooltip>
-
-<Tooltip title="Horizontal">
-  <Button
-    type={layoutDirection === 'horizontal' ? 'primary' : 'dashed'}
-    icon={<ArrowRightOutlined />}
-    onClick={() => setLayoutDirection('horizontal')}
-  />
-</Tooltip>
-
-<Tooltip title="Vertical">
-  <Button
-    type={layoutDirection === 'vertical' ? 'primary' : 'dashed'}
-    icon={<ArrowDownOutlined />}
-    onClick={() => setLayoutDirection('vertical')}
-  />
-</Tooltip>
-          </div>
-        </div>
+  
         <div
           style={{
             display: "flex",

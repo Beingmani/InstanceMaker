@@ -389,9 +389,7 @@ function applyExposedInstanceProperties(
                 node.setProperties({ [actualPropertyName]: value });
               }
 
-              console.log(
-                `✅ Applied ${propertyName} = ${value} to ${node.name}`
-              );
+            
             }
           } catch (error) {
             console.warn(
@@ -438,7 +436,7 @@ async function createInstancesTable(
   } else if (node?.type === "COMPONENT") {
     singleComponent = node as ComponentNode;
   } else {
-    console.error("Selected node is not a component or component set");
+  
     figma.notify("Please select a valid component or component set");
     return;
   }
@@ -537,6 +535,20 @@ async function createInstancesTable(
 
   // 🧠 OPTIMAL STRATEGY: Find best aspect ratio distribution
 function getOptimalDistribution(forcedDirection?: string) {
+   if (propertyKeys.length === 1) {
+    if (forcedDirection === "vertical") {
+      return {
+        columnProperties: [],
+        rowProperties: [propertyKeys[0]], // Put single property in rows for vertical
+      };
+    } else {
+      // Default horizontal for single property
+      return {
+        columnProperties: [propertyKeys[0]],
+        rowProperties: [],
+      };
+    }
+  }
      if (forcedDirection === "horizontal") {
     return {
       columnProperties: propertyKeys,
@@ -592,11 +604,7 @@ function getOptimalDistribution(forcedDirection?: string) {
 
       const score = ratioScore * columnPenalty * rowPenalty;
 
-      console.log(
-        `Trying: cols=${totalCols}, rows=${totalRows}, ratio=${aspectRatio.toFixed(
-          2
-        )}, score=${score.toFixed(3)}`
-      );
+     
 
       if (score > bestScore) {
         bestScore = score;
@@ -611,11 +619,7 @@ function getOptimalDistribution(forcedDirection?: string) {
       }
     }
 
-    console.log(
-      `🎯 Optimal distribution: ${bestDistribution.totalCols} cols × ${
-        bestDistribution.totalRows
-      } rows (ratio: ${bestDistribution.aspectRatio.toFixed(2)})`
-    );
+  
 
     return bestDistribution;
   }
