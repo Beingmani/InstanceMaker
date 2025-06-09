@@ -1096,9 +1096,29 @@ figma.ui.onmessage = async (msg) => {
       const combinations = generateCombinations(properties);
      await createInstancesTable(componentId, combinations, spacing, msg.layoutDirection, theme); // Pass theme
 
-     if (generatePropertyTable) {
+  if (generatePropertyTable) {
   const componentName = node.name;
-  await createPropertyDocumentationTable(componentName, allProperties, theme);
+  
+  // Find the instances table that was just created
+  let instancesTableFrame: FrameNode | null = null;
+  const recentNodes = figma.currentPage.children;
+  for (let i = recentNodes.length - 1; i >= 0; i--) {
+    const node = recentNodes[i];
+    if (node.type === "FRAME" && node.name.includes("All Variants")) {
+      instancesTableFrame = node as FrameNode;
+      break;
+    }
+  }
+  
+  // Pass instances table position to property table
+  const instancesTableInfo = instancesTableFrame ? {
+    x: instancesTableFrame.x,
+    y: instancesTableFrame.y,
+    width: instancesTableFrame.width,
+    height: instancesTableFrame.height
+  } : null;
+  
+  await createPropertyDocumentationTable(componentName, allProperties, theme, instancesTableInfo);
 }
       // INCREMENT USAGE COUNT AND NOTIFY - ADD THIS BLOCK
       if (figma.payments.status.type === "UNPAID") {

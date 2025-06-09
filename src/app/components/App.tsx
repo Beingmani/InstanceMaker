@@ -502,14 +502,14 @@ const handleGeneratePropertyTable = () => {
   return (
     <div style={{ padding: "12px", fontFamily: "Inter, sans-serif" }}>
       <Space direction="vertical" size={4} style={{ width: "100%" }}>
-        <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
+        {/* <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
           <Button size="small" onClick={toggleDevPaymentStatus}>
             Toggle Payment
           </Button>
           <Button size="small" onClick={resetUsageCount}>
             Reset Usage
           </Button>
-        </div>
+        </div> */}
 
         {!isPaid && <LoopingUpgradeButton onClick={initiatePayment} />}
        <div
@@ -1025,8 +1025,7 @@ const handleGeneratePropertyTable = () => {
             />
           </Card>
         )}
-   
-
+  
 
 <div
   style={{

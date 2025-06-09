@@ -12,7 +12,8 @@ interface ComponentProperty {
 export async function createPropertyDocumentationTable(
   componentName: string,
   properties: ComponentProperty[],
-  theme?: any
+  theme?: any,
+  instancesTableInfo?: { x: number; y: number; width: number; height: number } | null
 ): Promise<FrameNode> {
 
     const filteredProperties = properties.filter(prop => 
@@ -77,15 +78,15 @@ export async function createPropertyDocumentationTable(
     blendMode: "NORMAL"
   }];
 
-  // Create title
-  const title = await createPropertyTableText(
-    `${componentName} Properties`,
-    20,
-    true,
-    currentTheme.primary
-  );
-  title.textAutoResize = "WIDTH_AND_HEIGHT";
-  mainContainer.appendChild(title);
+  // // Create title
+  // const title = await createPropertyTableText(
+  //   `${componentName} Properties`,
+  //   20,
+  //   true,
+  //   currentTheme.primary
+  // );
+  // title.textAutoResize = "WIDTH_AND_HEIGHT";
+  // mainContainer.appendChild(title);
 
   // Create table container with AUTO LAYOUT
   const tableContainer = figma.createFrame();
@@ -272,28 +273,49 @@ for (let rowIndex = 0; rowIndex < filteredProperties.length; rowIndex++) {
   mainContainer.appendChild(tableContainer);
 
   // Smart positioning
+ // Smart positioning
   try {
-    const selection = figma.currentPage.selection;
-    if (selection.length > 0) {
-      const selectedNode = selection[0];
-      mainContainer.x = selectedNode.x + selectedNode.width + 100;
-      mainContainer.y = selectedNode.y;
+    if (instancesTableInfo) {
+      // Position next to instances table
+      mainContainer.x = instancesTableInfo.x + instancesTableInfo.width + 50;
+      mainContainer.y = instancesTableInfo.y;
       
+      // Check viewport bounds and adjust if needed
       const viewportBounds = figma.viewport.bounds;
       const tableRightEdge = mainContainer.x + mainContainer.width;
       
       if (tableRightEdge > viewportBounds.x + viewportBounds.width) {
-        mainContainer.x = selectedNode.x - mainContainer.width - 100;
+        mainContainer.x = instancesTableInfo.x - mainContainer.width - 50;
         
         if (mainContainer.x < viewportBounds.x) {
-          mainContainer.x = selectedNode.x;
-          mainContainer.y = selectedNode.y + selectedNode.height + 100;
+          mainContainer.x = instancesTableInfo.x;
+          mainContainer.y = instancesTableInfo.y + instancesTableInfo.height + 50;
         }
       }
     } else {
-      const viewportCenter = figma.viewport.center;
-      mainContainer.x = viewportCenter.x - mainContainer.width / 2;
-      mainContainer.y = viewportCenter.y - mainContainer.height / 2;
+      // Original positioning logic for when no instances table exists
+      const selection = figma.currentPage.selection;
+      if (selection.length > 0) {
+        const selectedNode = selection[0];
+        mainContainer.x = selectedNode.x + selectedNode.width + 100;
+        mainContainer.y = selectedNode.y;
+        
+        const viewportBounds = figma.viewport.bounds;
+        const tableRightEdge = mainContainer.x + mainContainer.width;
+        
+        if (tableRightEdge > viewportBounds.x + viewportBounds.width) {
+          mainContainer.x = selectedNode.x - mainContainer.width - 100;
+          
+          if (mainContainer.x < viewportBounds.x) {
+            mainContainer.x = selectedNode.x;
+            mainContainer.y = selectedNode.y + selectedNode.height + 100;
+          }
+        }
+      } else {
+        const viewportCenter = figma.viewport.center;
+        mainContainer.x = viewportCenter.x - mainContainer.width / 2;
+        mainContainer.y = viewportCenter.y - mainContainer.height / 2;
+      }
     }
   } catch {
     const viewportCenter = figma.viewport.center;
@@ -338,8 +360,6 @@ function getPropertyDescription(property: ComponentProperty): string {
       return `Shows the intent of the component`;
     case 'BOOLEAN':
       return `If true, will remove the border & border-radius from the container`;
-    case 'EXPOSED_INSTANCE':
-      return `Toggle the close icon from the component`;
     default:
       return `Controls the ${cleanName} behavior of the component`;
   }
