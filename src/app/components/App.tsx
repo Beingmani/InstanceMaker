@@ -12,7 +12,8 @@ import {
   Tag,
   Switch,
   Alert,
-  Progress,Tooltip
+  Progress,
+  Tooltip,
 } from "antd";
 import { BooleanIcon, VariantIcon, NestedIcon } from "./customIcons";
 import {
@@ -100,6 +101,224 @@ const UsageAlert = ({
   );
 };
 
+// Add this new component before the main App component
+const LayoutPreview = ({
+  properties,
+  layoutDirection,
+  includeBooleans,
+  includeExposedInstances,
+  toggledProperties,
+}) => {
+  if (!properties || properties.length === 0) {
+    return (
+      <div
+        style={{
+          padding: "20px",
+          textAlign: "center",
+          color: "#888",
+          fontSize: "12px",
+
+          borderRadius: "6px",
+          border: "1px dashed #d9d9d9",
+          backgroundImage: "radial-gradient(#e0e0e0 1px, transparent 1px)",
+        }}
+      >
+        Select a component to see layout preview
+      </div>
+    );
+  }
+
+  // Filter enabled properties (same logic as main component)
+  const enabledProperties = properties.filter((prop) => {
+    if (prop.type === "BOOLEAN" && !includeBooleans) return false;
+    if (prop.type === "EXPOSED_INSTANCE" && !includeExposedInstances)
+      return false;
+    return toggledProperties[prop.name];
+  });
+
+  if (enabledProperties.length === 0) {
+    return (
+      <div
+        style={{
+          padding: "20px",
+          textAlign: "center",
+          color: "#888",
+          fontSize: "12px",
+          border: "1px dashed #d9d9d9",
+          borderRadius: "6px",
+          backgroundColor: "#fafafa",
+        }}
+      >
+        Enable properties above to see preview
+      </div>
+    );
+  }
+
+  // Calculate property groups
+  const propertyGroups = {};
+  enabledProperties.forEach((prop) => {
+    propertyGroups[prop.name] = prop.values;
+  });
+
+  // Simulate the optimal distribution logic from your controller
+  const getOptimalDistribution = (forcedDirection) => {
+    const propertyKeys = enabledProperties.map((p) => p.name);
+
+    if (propertyKeys.length === 1) {
+      if (forcedDirection === "vertical") {
+        return {
+          columnProperties: [],
+          rowProperties: [propertyKeys[0]],
+        };
+      } else {
+        return {
+          columnProperties: [propertyKeys[0]],
+          rowProperties: [],
+        };
+      }
+    }
+
+    if (forcedDirection === "horizontal") {
+      return {
+        columnProperties: propertyKeys,
+        rowProperties: [],
+      };
+    }
+
+    if (forcedDirection === "vertical") {
+      return {
+        columnProperties: propertyKeys.slice(0, 1),
+        rowProperties: propertyKeys.slice(1),
+      };
+    }
+
+    // Optimal distribution logic (simplified version)
+    let bestDistribution = null;
+    let bestScore = 0;
+    const idealRatio = 1.6;
+
+    for (let colCount = 1; colCount < propertyKeys.length; colCount++) {
+      const sortedProps = propertyKeys.sort(
+        (a, b) => propertyGroups[b].length - propertyGroups[a].length
+      );
+
+      const columnProps = sortedProps.slice(0, colCount);
+      const rowProps = sortedProps.slice(colCount);
+
+      const totalCols = columnProps.reduce(
+        (acc, prop) => acc * propertyGroups[prop].length,
+        1
+      );
+      const totalRows = Math.max(
+        1,
+        rowProps.reduce((acc, prop) => acc * propertyGroups[prop].length, 1)
+      );
+
+      const aspectRatio = totalCols / totalRows;
+      const ratioScore = 1 / (Math.abs(aspectRatio - idealRatio) + 0.1);
+      const columnPenalty = totalCols > 12 ? 0.5 : 1;
+      const rowPenalty = totalRows > 20 ? 0.8 : 1;
+      const score = ratioScore * columnPenalty * rowPenalty;
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestDistribution = {
+          columnProperties: columnProps,
+          rowProperties: rowProps,
+          totalCols,
+          totalRows,
+          aspectRatio,
+        };
+      }
+    }
+
+    return bestDistribution;
+  };
+
+  const distribution = getOptimalDistribution(layoutDirection);
+  const { columnProperties, rowProperties, totalCols, totalRows } =
+    distribution;
+
+  const cleanPropertyName = (name) => name.split("#")[0];
+
+
+  return (
+    <div
+      style={{
+
+        borderRadius: "6px",
+        padding: "12px",
+                border: "1px dashed #d9d9d9",
+          backgroundImage: "radial-gradient(#e0e0e0 1px, transparent 1px)",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "12px",
+        }}
+      ></div>
+
+      {/* Compact representation */}
+      <div
+        style={{
+          display: "flex",
+          gap: "12px",
+          alignItems: "flex-start",
+        }}
+      >
+        {/* Columns */}
+       <div style={{ flex: 1 }}>
+  <div style={{ fontSize: "9px", color: "#999", marginBottom: "4px" }}>
+    COLUMNS ({columnProperties.length})
+  </div>
+  {columnProperties.length > 0 ? (
+    columnProperties.map((prop) => (
+      <Tag
+        key={prop}
+        size="small"
+        color="blue"
+        style={{ marginBottom: "2px" }}
+      >
+        {cleanPropertyName(prop)} ({propertyGroups[prop].length})
+      </Tag>
+    ))
+  ) : (
+    <Text style={{ fontSize: "10px", color: "#ccc" }}>None</Text>
+  )}
+</div>
+
+        
+
+        <div style={{ fontSize: "16px", color: "#ddd" }}>×</div>
+
+        {/* Rows */}
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: "9px", color: "#999", marginBottom: "4px" }}>
+            ROWS ({rowProperties.length})
+          </div>
+          {rowProperties.length > 0 ? (
+            rowProperties.map((prop) => (
+              <Tag
+                key={prop}
+                size="small"
+                color="green"
+                style={{ marginBottom: "2px" }}
+              >
+                {cleanPropertyName(prop)} ({propertyGroups[prop].length})
+              </Tag>
+            ))
+          ) : (
+            <Text style={{ fontSize: "10px", color: "#ccc" }}>None</Text>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const App: React.FC = () => {
   // Make sure this is correctly typed
   const [selectedComponent, setSelectedComponent] =
@@ -107,10 +326,12 @@ const App: React.FC = () => {
   const [spacing, setSpacing] = useState<number>(20);
   const [previewData, setPreviewData] = useState<any[]>([]);
   const [includeBooleans, setIncludeBooleans] = useState<boolean>(true);
-  const [isGeneratingPropertyTable, setIsGeneratingPropertyTable] = useState(false);
+  const [isGeneratingPropertyTable, setIsGeneratingPropertyTable] =
+    useState(false);
   const [includeExposedInstances, setIncludeExposedInstances] =
     useState<boolean>(false);
-    const [generatePropertyTable, setGeneratePropertyTable] = useState<boolean>(false);
+  const [generatePropertyTable, setGeneratePropertyTable] =
+    useState<boolean>(false);
   const [toggledProperties, setToggledProperties] = useState<
     Record<string, boolean>
   >({});
@@ -121,84 +342,82 @@ const App: React.FC = () => {
   >("optimal");
   const [customColor, setCustomColor] = useState<string>("#6644CC");
   const [selectedTheme, setSelectedTheme] = useState<string>("purple");
-const [isGenerating, setIsGenerating] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const FREE_USAGE_LIMIT = 10;
   const themes = {
-  purple: {
-    name: "Purple",
-    primary: { r: 0.4, g: 0.2, b: 0.8 },
-    secondary: { r: 0.94, g: 0.94, b: 0.98 },
-    stroke: { r: 0.85, g: 0.85, b: 0.9 },
-    accent: { r: 0.7, g: 0.4, b: 1 }
-  },
-  blue: {
-    name: "Ocean Blue",
-    primary: { r: 0.2, g: 0.4, b: 0.8 },
-    secondary: { r: 0.94, g: 0.96, b: 0.98 },
-    stroke: { r: 0.85, g: 0.88, b: 0.9 },
-    accent: { r: 0.4, g: 0.6, b: 1 }
-  },
-  green: {
-    name: "Forest Green",
-    primary: { r: 0.2, g: 0.6, b: 0.3 },
-    secondary: { r: 0.94, g: 0.98, b: 0.95 },
-    stroke: { r: 0.85, g: 0.9, b: 0.87 },
-    accent: { r: 0.3, g: 0.8, b: 0.4 }
-  },
-  orange: {
-    name: "Sunset Orange",
-    primary: { r: 0.8, g: 0.4, b: 0.1 },
-    secondary: { r: 0.98, g: 0.96, b: 0.94 },
-    stroke: { r: 0.9, g: 0.88, b: 0.85 },
-    accent: { r: 1, g: 0.6, b: 0.2 }
-  },
-    custom: {
-    name: "Custom",
-    primary: { r: 0.4, g: 0.27, b: 0.8 }, // Will be dynamically updated
-    secondary: { r: 0.95, g: 0.95, b: 0.98 },
-    stroke: { r: 0.9, g: 0.9, b: 0.92 },
-    accent: { r: 0.6, g: 0.4, b: 0.9 }
-  }
-};
-
-
-useEffect(() => {
-  // Check payment status on mount
-  parent.postMessage(
-    {
-      pluginMessage: {
-        type: "check-payment-status",
-      },
+    purple: {
+      name: "Purple",
+      primary: { r: 0.4, g: 0.2, b: 0.8 },
+      secondary: { r: 0.94, g: 0.94, b: 0.98 },
+      stroke: { r: 0.85, g: 0.85, b: 0.9 },
+      accent: { r: 0.7, g: 0.4, b: 1 },
     },
-    "*"
-  );
-
-  // Listen for messages from the plugin controller
-  window.onmessage = (event) => {
-    const { type, data, usageCount, isPaid } = event.data.pluginMessage || {};
-
-    if (type === "component-selected") {
-      setSelectedComponent(data);
-    } else if (type === "selection-cleared") {
-      setSelectedComponent(null);
-      setToggledProperties({});
-    } else if (type === "update-usage") {
-      setUsageCount(usageCount !== undefined ? usageCount : data?.usageCount);
-      setIsPaid(isPaid !== undefined ? isPaid : data?.isPaid);
-    } else if (type === "table-generation-complete") {
-  
-      setIsGenerating(false);
-    }
-    else if (type === "property-table-generation-complete") {  // ADD THIS
-      setIsGeneratingPropertyTable(false);
-    }
+    blue: {
+      name: "Ocean Blue",
+      primary: { r: 0.2, g: 0.4, b: 0.8 },
+      secondary: { r: 0.94, g: 0.96, b: 0.98 },
+      stroke: { r: 0.85, g: 0.88, b: 0.9 },
+      accent: { r: 0.4, g: 0.6, b: 1 },
+    },
+    green: {
+      name: "Forest Green",
+      primary: { r: 0.2, g: 0.6, b: 0.3 },
+      secondary: { r: 0.94, g: 0.98, b: 0.95 },
+      stroke: { r: 0.85, g: 0.9, b: 0.87 },
+      accent: { r: 0.3, g: 0.8, b: 0.4 },
+    },
+    orange: {
+      name: "Sunset Orange",
+      primary: { r: 0.8, g: 0.4, b: 0.1 },
+      secondary: { r: 0.98, g: 0.96, b: 0.94 },
+      stroke: { r: 0.9, g: 0.88, b: 0.85 },
+      accent: { r: 1, g: 0.6, b: 0.2 },
+    },
+    custom: {
+      name: "Custom",
+      primary: { r: 0.4, g: 0.27, b: 0.8 }, // Will be dynamically updated
+      secondary: { r: 0.95, g: 0.95, b: 0.98 },
+      stroke: { r: 0.9, g: 0.9, b: 0.92 },
+      accent: { r: 0.6, g: 0.4, b: 0.9 },
+    },
   };
 
-  // Cleanup
-  return () => {
-    window.onmessage = null;
-  };
-}, []);
+  useEffect(() => {
+    // Check payment status on mount
+    parent.postMessage(
+      {
+        pluginMessage: {
+          type: "check-payment-status",
+        },
+      },
+      "*"
+    );
+
+    // Listen for messages from the plugin controller
+    window.onmessage = (event) => {
+      const { type, data, usageCount, isPaid } = event.data.pluginMessage || {};
+
+      if (type === "component-selected") {
+        setSelectedComponent(data);
+      } else if (type === "selection-cleared") {
+        setSelectedComponent(null);
+        setToggledProperties({});
+      } else if (type === "update-usage") {
+        setUsageCount(usageCount !== undefined ? usageCount : data?.usageCount);
+        setIsPaid(isPaid !== undefined ? isPaid : data?.isPaid);
+      } else if (type === "table-generation-complete") {
+        setIsGenerating(false);
+      } else if (type === "property-table-generation-complete") {
+        // ADD THIS
+        setIsGeneratingPropertyTable(false);
+      }
+    };
+
+    // Cleanup
+    return () => {
+      window.onmessage = null;
+    };
+  }, []);
   // Generate preview data for the selected component
   useEffect(() => {
     if (selectedComponent) {
@@ -229,42 +448,44 @@ useEffect(() => {
   };
 
   // Function to convert hex to RGB
-const hexToRgb = (hex: string) => {
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return result ? {
-    r: parseInt(result[1], 16) / 255,
-    g: parseInt(result[2], 16) / 255,
-    b: parseInt(result[3], 16) / 255
-  } : { r: 0.4, g: 0.27, b: 0.8 };
-};
+  const hexToRgb = (hex: string) => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result
+      ? {
+          r: parseInt(result[1], 16) / 255,
+          g: parseInt(result[2], 16) / 255,
+          b: parseInt(result[3], 16) / 255,
+        }
+      : { r: 0.4, g: 0.27, b: 0.8 };
+  };
 
-// Function to generate theme colors based on primary color
-const generateCustomTheme = (primaryColor: string) => {
-  const primary = hexToRgb(primaryColor);
-  
-  // Generate secondary color (very light version of primary)
-  const secondary = {
-    r: 0.9 + (primary.r * 0.1),
-    g: 0.9 + (primary.g * 0.1),
-    b: 0.9 + (primary.b * 0.1)
+  // Function to generate theme colors based on primary color
+  const generateCustomTheme = (primaryColor: string) => {
+    const primary = hexToRgb(primaryColor);
+
+    // Generate secondary color (very light version of primary)
+    const secondary = {
+      r: 0.9 + primary.r * 0.1,
+      g: 0.9 + primary.g * 0.1,
+      b: 0.9 + primary.b * 0.1,
+    };
+
+    // Generate stroke color (light version of primary)
+    const stroke = {
+      r: 0.8 + primary.r * 0.15,
+      g: 0.8 + primary.g * 0.15,
+      b: 0.8 + primary.b * 0.15,
+    };
+
+    // Generate accent color (lighter version of primary)
+    const accent = {
+      r: Math.min(1, primary.r + 0.2),
+      g: Math.min(1, primary.g + 0.2),
+      b: Math.min(1, primary.b + 0.2),
+    };
+
+    return { primary, secondary, stroke, accent };
   };
-  
-  // Generate stroke color (light version of primary)
-  const stroke = {
-    r: 0.8 + (primary.r * 0.15),
-    g: 0.8 + (primary.g * 0.15),
-    b: 0.8 + (primary.b * 0.15)
-  };
-  
-  // Generate accent color (lighter version of primary)
-  const accent = {
-    r: Math.min(1, primary.r + 0.2),
-    g: Math.min(1, primary.g + 0.2),
-    b: Math.min(1, primary.b + 0.2)
-  };
-  
-  return { primary, secondary, stroke, accent };
-};
 
   const formatNumber = (num) => {
     if (num >= 1000000000) {
@@ -373,82 +594,82 @@ const generateCustomTheme = (primaryColor: string) => {
     );
   };
 
-const handleGeneratePropertyTable = () => {
-  setIsGeneratingPropertyTable(true);
-  
-  if (selectedComponent) {
-    // Prepare theme data
-    let themeToSend;
-    if (selectedTheme === 'custom') {
-      themeToSend = {
-        name: "Custom",
-        ...generateCustomTheme(customColor)
-      };
-    } else {
-      themeToSend = themes[selectedTheme];
-    }
+  const handleGeneratePropertyTable = () => {
+    setIsGeneratingPropertyTable(true);
 
-    parent.postMessage(
-      {
-        pluginMessage: {
-          type: "generate-property-table",
-          componentId: selectedComponent.id,
-          componentName: selectedComponent.name,
-          properties: selectedComponent.properties,
-          theme: themeToSend // Add theme support
+    if (selectedComponent) {
+      // Prepare theme data
+      let themeToSend;
+      if (selectedTheme === "custom") {
+        themeToSend = {
+          name: "Custom",
+          ...generateCustomTheme(customColor),
+        };
+      } else {
+        themeToSend = themes[selectedTheme];
+      }
+
+      parent.postMessage(
+        {
+          pluginMessage: {
+            type: "generate-property-table",
+            componentId: selectedComponent.id,
+            componentName: selectedComponent.name,
+            properties: selectedComponent.properties,
+            theme: themeToSend, // Add theme support
+          },
         },
-      },
-      "*"
-    );
-  } else {
-    setIsGeneratingPropertyTable(false);
-  }
-};
-
- const handleGenerate = () => {
-  setIsGenerating(true);
-  
-  if (selectedComponent) {
-    const enabledProperties = selectedComponent.properties
-      .filter((prop) => {
-        // Apply global filters
-        if (prop.type === "BOOLEAN" && !includeBooleans) return false;
-        if (prop.type === "EXPOSED_INSTANCE" && !includeExposedInstances)
-          return false;
-        // Apply individual toggles
-        return toggledProperties[prop.name];
-      })
-      .map((prop) => prop.name);
-
-    let themeToSend;
-    if (selectedTheme === 'custom') {
-      themeToSend = {
-        name: "Custom",
-        ...generateCustomTheme(customColor)
-      };
+        "*"
+      );
     } else {
-      themeToSend = themes[selectedTheme];
+      setIsGeneratingPropertyTable(false);
     }
+  };
 
-    parent.postMessage(
-      {
-        pluginMessage: {
-          type: "generate-table",
-          componentId: selectedComponent.id,
-          spacing: spacing,
-          enabledProperties: enabledProperties,
-          layoutDirection: layoutDirection,
-          theme: themeToSend,
-          generatePropertyTable:generatePropertyTable
+  const handleGenerate = () => {
+    setIsGenerating(true);
+
+    if (selectedComponent) {
+      const enabledProperties = selectedComponent.properties
+        .filter((prop) => {
+          // Apply global filters
+          if (prop.type === "BOOLEAN" && !includeBooleans) return false;
+          if (prop.type === "EXPOSED_INSTANCE" && !includeExposedInstances)
+            return false;
+          // Apply individual toggles
+          return toggledProperties[prop.name];
+        })
+        .map((prop) => prop.name);
+
+      let themeToSend;
+      if (selectedTheme === "custom") {
+        themeToSend = {
+          name: "Custom",
+          ...generateCustomTheme(customColor),
+        };
+      } else {
+        themeToSend = themes[selectedTheme];
+      }
+
+      parent.postMessage(
+        {
+          pluginMessage: {
+            type: "generate-table",
+            componentId: selectedComponent.id,
+            spacing: spacing,
+            enabledProperties: enabledProperties,
+            layoutDirection: layoutDirection,
+            theme: themeToSend,
+            generatePropertyTable: generatePropertyTable,
+          },
         },
-      },
-      "*"
-    );
-  } else {
-    // If no component selected, stop loading immediately
-    setIsGenerating(false);
-  }
-};
+        "*"
+      );
+    } else {
+      // If no component selected, stop loading immediately
+      setIsGenerating(false);
+    }
+  };
 
   // Generate table columns dynamically based on component properties
   const selectedComponentData = selectedComponent;
@@ -512,12 +733,12 @@ const handleGeneratePropertyTable = () => {
         </div> */}
 
         {!isPaid && <LoopingUpgradeButton onClick={initiatePayment} />}
-       <div
+        <div
           style={{
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            marginTop:"12px"
+            marginTop: "12px",
           }}
         >
           <Text
@@ -525,7 +746,7 @@ const handleGeneratePropertyTable = () => {
               fontSize: "12px",
               color: "#888",
               marginTop: "12px",
-            
+
               display: "block",
               fontWeight: "bold",
             }}
@@ -533,127 +754,136 @@ const handleGeneratePropertyTable = () => {
             Layout Direction
           </Text>
           <div style={{ display: "flex", gap: 8 }}>
-           <Tooltip title="Auto-Optimal">
-  <Button
-    type={layoutDirection === 'optimal' ? 'primary' : 'dashed'}
-    icon={<BorderOuterOutlined />}
-    onClick={() => setLayoutDirection('optimal')}
-  />
-</Tooltip>
+            <Tooltip title="Auto-Optimal">
+              <Button
+                type={layoutDirection === "optimal" ? "primary" : "dashed"}
+                icon={<BorderOuterOutlined />}
+                onClick={() => setLayoutDirection("optimal")}
+              />
+            </Tooltip>
 
-<Tooltip title="Horizontal">
-  <Button
-    type={layoutDirection === 'horizontal' ? 'primary' : 'dashed'}
-    icon={<ArrowRightOutlined />}
-    onClick={() => setLayoutDirection('horizontal')}
-  />
-</Tooltip>
+            <Tooltip title="Horizontal">
+              <Button
+                type={layoutDirection === "horizontal" ? "primary" : "dashed"}
+                icon={<ArrowRightOutlined />}
+                onClick={() => setLayoutDirection("horizontal")}
+              />
+            </Tooltip>
 
-<Tooltip title="Vertical">
-  <Button
-    type={layoutDirection === 'vertical' ? 'primary' : 'dashed'}
-    icon={<ArrowDownOutlined />}
-    onClick={() => setLayoutDirection('vertical')}
-  />
-</Tooltip>
+            <Tooltip title="Vertical">
+              <Button
+                type={layoutDirection === "vertical" ? "primary" : "dashed"}
+                icon={<ArrowDownOutlined />}
+                onClick={() => setLayoutDirection("vertical")}
+              />
+            </Tooltip>
           </div>
         </div>
-<div
-  style={{
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: "12px"
-  }}
->
-  <Text
-    style={{
-      fontSize: "12px",
-      color: "#888",
-      fontWeight: "bold",
-      display: "block"
-    }}
-  >
-    Table Theme
-  </Text>
-  
-  <div style={{ display: "flex", gap: 8 }}>
-    {Object.entries(themes).slice(0, 4).map(([key, theme]) => (
-      <Tooltip key={key} title={theme.name}>
-        <Button
-          type={selectedTheme === key ? 'primary' : 'dashed'}
-          onClick={() => setSelectedTheme(key)}
-          style={{
-            width: "32px",
-            height: "32px",
-            padding: "4px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center"
-          }}
-        >
-          <div
-            style={{
-              width: "16px",
-              height: "16px",
-              borderRadius: "3px",
-              backgroundColor: `rgb(${Math.floor(theme.primary.r * 255)}, ${Math.floor(theme.primary.g * 255)}, ${Math.floor(theme.primary.b * 255)})`,
-              border: "1px solid rgba(0,0,0,0.1)"
-            }}
-          />
-        </Button>
-      </Tooltip>
-    ))}
-    
-    {/* Custom Color Button */}
-    <Tooltip title="Custom Color">
-      <Button
-        type={selectedTheme === 'custom' ? 'primary' : 'dashed'}
-        onClick={() => setSelectedTheme('custom')}
-        style={{
-          width: "32px",
-          height: "32px",
-          padding: "4px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          position: "relative"
-        }}
-      >
+
+      
+
         <div
           style={{
-            width: "16px",
-            height: "16px",
-            borderRadius: "3px",
-            background: `linear-gradient(45deg, ${customColor}, ${customColor}dd)`,
-            border: "1px solid rgba(0,0,0,0.1)",
-            position: "relative"
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginTop: "12px",
           }}
         >
-          {/* Color picker input overlay */}
-          <input
-            type="color"
-            value={customColor}
-            onChange={(e) => {
-              setCustomColor(e.target.value);
-              setSelectedTheme('custom');
-            }}
+          <Text
             style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: "100%",
-              height: "100%",
-              opacity: 0,
-              cursor: "pointer"
+              fontSize: "12px",
+              color: "#888",
+              fontWeight: "bold",
+              display: "block",
             }}
-          />
+          >
+            Table Theme
+          </Text>
+
+          <div style={{ display: "flex", gap: 8 }}>
+            {Object.entries(themes)
+              .slice(0, 4)
+              .map(([key, theme]) => (
+                <Tooltip key={key} title={theme.name}>
+                  <Button
+                    type={selectedTheme === key ? "primary" : "dashed"}
+                    onClick={() => setSelectedTheme(key)}
+                    style={{
+                      width: "32px",
+                      height: "32px",
+                      padding: "4px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: "16px",
+                        height: "16px",
+                        borderRadius: "3px",
+                        backgroundColor: `rgb(${Math.floor(
+                          theme.primary.r * 255
+                        )}, ${Math.floor(theme.primary.g * 255)}, ${Math.floor(
+                          theme.primary.b * 255
+                        )})`,
+                        border: "1px solid rgba(0,0,0,0.1)",
+                      }}
+                    />
+                  </Button>
+                </Tooltip>
+              ))}
+
+            {/* Custom Color Button */}
+            <Tooltip title="Custom Color">
+              <Button
+                type={selectedTheme === "custom" ? "primary" : "dashed"}
+                onClick={() => setSelectedTheme("custom")}
+                style={{
+                  width: "32px",
+                  height: "32px",
+                  padding: "4px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  position: "relative",
+                }}
+              >
+                <div
+                  style={{
+                    width: "16px",
+                    height: "16px",
+                    borderRadius: "3px",
+                    background: `linear-gradient(45deg, ${customColor}, ${customColor}dd)`,
+                    border: "1px solid rgba(0,0,0,0.1)",
+                    position: "relative",
+                  }}
+                >
+                  {/* Color picker input overlay */}
+                  <input
+                    type="color"
+                    value={customColor}
+                    onChange={(e) => {
+                      setCustomColor(e.target.value);
+                      setSelectedTheme("custom");
+                    }}
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      width: "100%",
+                      height: "100%",
+                      opacity: 0,
+                      cursor: "pointer",
+                    }}
+                  />
+                </div>
+              </Button>
+            </Tooltip>
+          </div>
         </div>
-      </Button>
-    </Tooltip>
-  </div>
-</div>
-  
+
         <div
           style={{
             display: "flex",
@@ -682,7 +912,7 @@ const handleGeneratePropertyTable = () => {
             initiatePayment={initiatePayment}
           />
         </div>
-       
+
         <Card
           style={{
             position: "relative",
@@ -820,6 +1050,27 @@ const handleGeneratePropertyTable = () => {
             </div>
           )}
         </Card>
+
+          <div style={{ marginTop: "16px" }}>
+          <Text
+            style={{
+              fontSize: "12px",
+              color: "#888",
+              marginBottom: "8px",
+              display: "block",
+              fontWeight: "bold",
+            }}
+          >
+            Layout Preview
+          </Text>
+          <LayoutPreview
+            properties={selectedComponent?.properties || []}
+            layoutDirection={layoutDirection}
+            includeBooleans={includeBooleans}
+            includeExposedInstances={includeExposedInstances}
+            toggledProperties={toggledProperties}
+          />
+        </div>
         {/* Component Properties Section */}
 
         <Text
@@ -1025,34 +1276,33 @@ const handleGeneratePropertyTable = () => {
             />
           </Card>
         )}
-  
 
-<div
-  style={{
-    display: "flex",
-    gap: "8px",
-    justifyContent: "space-between",
-    alignItems: "center",
-  }}
->
-  <Text
-    style={{
-      fontSize: "12px",
-      color: "#888",
-      marginTop: "12px",
-      display: "block",
-    }}
-  >
-    Generate Property Table
-  </Text>
-  <Space>
-    <Switch
-      checked={generatePropertyTable}
-      onChange={setGeneratePropertyTable}
-      size="small"
-    />
-  </Space>
-</div>
+        {/* <div
+          style={{
+            display: "flex",
+            gap: "8px",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <Text
+            style={{
+              fontSize: "12px",
+              color: "#888",
+              marginTop: "12px",
+              display: "block",
+            }}
+          >
+            Generate Property Table
+          </Text>
+          <Space>
+            <Switch
+              checked={generatePropertyTable}
+              onChange={setGeneratePropertyTable}
+              size="small"
+            />
+          </Space>
+        </div> */}
         <div
           style={{
             position: "fixed",
@@ -1087,42 +1337,42 @@ const handleGeneratePropertyTable = () => {
             {isPaid ? "Premium" : "Free"}
           </Tag>
           <Button
-  type="primary"
-  onClick={handleGenerate}
-  loading={isGenerating} // Add loading prop
-  disabled={
-    isGenerating || // Disable when generating
-    !selectedComponent ||
-    calculateCombinations() === 0 ||
-    (typeof usageCount === "number" &&
-      usageCount >= FREE_USAGE_LIMIT &&
-      !isPaid)
-  }
-  icon={!isGenerating ? <PlayCircleOutlined /> : undefined} // Hide icon when loading
-  style={{ width: "100%" }}
->
-  {(() => {
-    if (isGenerating) {
-      return "Generating Table...";
-    }
-    if (
-      !isPaid &&
-      typeof usageCount === "number" &&
-      usageCount >= FREE_USAGE_LIMIT
-    ) {
-      return "Upgrade Required";
-    }
-    if (!selectedComponent) {
-      return "Select Component";
-    }
-    if (calculateCombinations() === 0) {
-      return selectedComponent?.properties.length === 0
-        ? "No Properties Found"
-        : "Enable Properties Above";
-    }
-    return "Generate Table";
-  })()}
-</Button>
+            type="primary"
+            onClick={handleGenerate}
+            loading={isGenerating} // Add loading prop
+            disabled={
+              isGenerating || // Disable when generating
+              !selectedComponent ||
+              calculateCombinations() === 0 ||
+              (typeof usageCount === "number" &&
+                usageCount >= FREE_USAGE_LIMIT &&
+                !isPaid)
+            }
+            icon={!isGenerating ? <PlayCircleOutlined /> : undefined} // Hide icon when loading
+            style={{ width: "100%" }}
+          >
+            {(() => {
+              if (isGenerating) {
+                return "Generating Table...";
+              }
+              if (
+                !isPaid &&
+                typeof usageCount === "number" &&
+                usageCount >= FREE_USAGE_LIMIT
+              ) {
+                return "Upgrade Required";
+              }
+              if (!selectedComponent) {
+                return "Select Component";
+              }
+              if (calculateCombinations() === 0) {
+                return selectedComponent?.properties.length === 0
+                  ? "No Properties Found"
+                  : "Enable Properties Above";
+              }
+              return "Generate Table";
+            })()}
+          </Button>
 
           {/* Premium indicator button */}
           <Button
