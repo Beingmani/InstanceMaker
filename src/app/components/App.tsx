@@ -107,7 +107,7 @@ const LayoutPreview = ({
   includeBooleans,
   includeExposedInstances,
   toggledProperties,
-  onLayoutChange, // Add this new prop
+  onLayoutChange,
   customLayout, 
 }) => {
   if (!properties || properties.length === 0) {
@@ -152,8 +152,9 @@ const LayoutPreview = ({
     );
   }
 
+  // FIX: Build propertyGroups from ALL properties, not just enabled ones
   const propertyGroups = {};
-  enabledProperties.forEach((prop) => {
+  properties.forEach((prop) => {
     propertyGroups[prop.name] = prop.values;
   });
 
@@ -231,8 +232,18 @@ const LayoutPreview = ({
     return bestDistribution;
   };
 
-const distribution = customLayout || getOptimalDistribution(layoutDirection);
-const { columnProperties, rowProperties } = distribution;
+  const distribution = customLayout || getOptimalDistribution(layoutDirection);
+  
+  // FIX: Filter out properties that are no longer enabled
+  const { columnProperties, rowProperties } = distribution;
+  const enabledPropertyNames = enabledProperties.map(p => p.name);
+  
+  const filteredColumnProperties = columnProperties.filter(prop => 
+    enabledPropertyNames.includes(prop)
+  );
+  const filteredRowProperties = rowProperties.filter(prop => 
+    enabledPropertyNames.includes(prop)
+  );
 
   const cleanPropertyName = (name) => name.split("#")[0];
 
@@ -243,19 +254,19 @@ const { columnProperties, rowProperties } = distribution;
     
     if (source.droppableId === destination.droppableId) {
       // Reordering within the same list
-      const items = source.droppableId === 'columns' ? [...columnProperties] : [...rowProperties];
+      const items = source.droppableId === 'columns' ? [...filteredColumnProperties] : [...filteredRowProperties];
       const [reorderedItem] = items.splice(source.index, 1);
       items.splice(destination.index, 0, reorderedItem);
       
       if (source.droppableId === 'columns') {
-        onLayoutChange({ columnProperties: items, rowProperties });
+        onLayoutChange({ columnProperties: items, rowProperties: filteredRowProperties });
       } else {
-        onLayoutChange({ columnProperties, rowProperties: items });
+        onLayoutChange({ columnProperties: filteredColumnProperties, rowProperties: items });
       }
     } else {
       // Moving between lists
-      const sourceItems = source.droppableId === 'columns' ? [...columnProperties] : [...rowProperties];
-      const destItems = destination.droppableId === 'columns' ? [...columnProperties] : [...rowProperties];
+      const sourceItems = source.droppableId === 'columns' ? [...filteredColumnProperties] : [...filteredRowProperties];
+      const destItems = destination.droppableId === 'columns' ? [...filteredColumnProperties] : [...filteredRowProperties];
       
       const [movedItem] = sourceItems.splice(source.index, 1);
       destItems.splice(destination.index, 0, movedItem);
@@ -288,7 +299,7 @@ const { columnProperties, rowProperties } = distribution;
           {/* Columns Droppable */}
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: "9px", color: "#999", marginBottom: "4px" }}>
-              COLUMNS ({columnProperties.length})
+              COLUMNS ({filteredColumnProperties.length})
             </div>
             <Droppable droppableId="columns">
               {(provided, snapshot) => (
@@ -303,7 +314,7 @@ const { columnProperties, rowProperties } = distribution;
                     padding: "4px",
                   }}
                 >
-                  {columnProperties.map((prop, index) => (
+                  {filteredColumnProperties.map((prop, index) => (
                     <Draggable key={prop} draggableId={`col-${prop}`} index={index}>
                       {(provided, snapshot) => (
                         <div
@@ -323,14 +334,14 @@ const { columnProperties, rowProperties } = distribution;
                               opacity: snapshot.isDragging ? 0.5 : 1,
                             }}
                           >
-                            {cleanPropertyName(prop)} ({propertyGroups[prop].length})
+                            {cleanPropertyName(prop)} ({propertyGroups[prop]?.length || 0})
                           </Tag>
                         </div>
                       )}
                     </Draggable>
                   ))}
                   {provided.placeholder}
-                  {columnProperties.length === 0 && (
+                  {filteredColumnProperties.length === 0 && (
                     <Text style={{ fontSize: "10px", color: "#ccc" }}>
                       Drag properties here
                     </Text>
@@ -345,7 +356,7 @@ const { columnProperties, rowProperties } = distribution;
           {/* Rows Droppable */}
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: "9px", color: "#999", marginBottom: "4px" }}>
-              ROWS ({rowProperties.length})
+              ROWS ({filteredRowProperties.length})
             </div>
             <Droppable droppableId="rows">
               {(provided, snapshot) => (
@@ -360,7 +371,7 @@ const { columnProperties, rowProperties } = distribution;
                     padding: "4px",
                   }}
                 >
-                  {rowProperties.map((prop, index) => (
+                  {filteredRowProperties.map((prop, index) => (
                     <Draggable key={prop} draggableId={`row-${prop}`} index={index}>
                       {(provided, snapshot) => (
                         <div
@@ -380,14 +391,14 @@ const { columnProperties, rowProperties } = distribution;
                               opacity: snapshot.isDragging ? 0.5 : 1,
                             }}
                           >
-                            {cleanPropertyName(prop)} ({propertyGroups[prop].length})
+                            {cleanPropertyName(prop)} ({propertyGroups[prop]?.length || 0})
                           </Tag>
                         </div>
                       )}
                     </Draggable>
                   ))}
                   {provided.placeholder}
-                  {rowProperties.length === 0 && (
+                  {filteredRowProperties.length === 0 && (
                     <Text style={{ fontSize: "10px", color: "#ccc" }}>
                       Drag properties here
                     </Text>
