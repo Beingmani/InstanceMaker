@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import LoopingUpgradeButton from "./LoopingUpgradeButton";
 import PropertyTable from "../components/propertyTable";
+import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import {
   Button,
   Select,
@@ -100,14 +101,14 @@ const UsageAlert = ({
     </div>
   );
 };
-
-// Add this new component before the main App component
 const LayoutPreview = ({
   properties,
   layoutDirection,
   includeBooleans,
   includeExposedInstances,
   toggledProperties,
+  onLayoutChange, // Add this new prop
+  customLayout, 
 }) => {
   if (!properties || properties.length === 0) {
     return (
@@ -117,7 +118,6 @@ const LayoutPreview = ({
           textAlign: "center",
           color: "#888",
           fontSize: "12px",
-
           borderRadius: "6px",
           border: "1px dashed #d9d9d9",
           backgroundImage: "radial-gradient(#e0e0e0 1px, transparent 1px)",
@@ -128,11 +128,9 @@ const LayoutPreview = ({
     );
   }
 
-  // Filter enabled properties (same logic as main component)
   const enabledProperties = properties.filter((prop) => {
     if (prop.type === "BOOLEAN" && !includeBooleans) return false;
-    if (prop.type === "EXPOSED_INSTANCE" && !includeExposedInstances)
-      return false;
+    if (prop.type === "EXPOSED_INSTANCE" && !includeExposedInstances) return false;
     return toggledProperties[prop.name];
   });
 
@@ -154,13 +152,11 @@ const LayoutPreview = ({
     );
   }
 
-  // Calculate property groups
   const propertyGroups = {};
   enabledProperties.forEach((prop) => {
     propertyGroups[prop.name] = prop.values;
   });
 
-  // Simulate the optimal distribution logic from your controller
   const getOptimalDistribution = (forcedDirection) => {
     const propertyKeys = enabledProperties.map((p) => p.name);
 
@@ -192,7 +188,7 @@ const LayoutPreview = ({
       };
     }
 
-    // Optimal distribution logic (simplified version)
+    // Your existing optimal distribution logic...
     let bestDistribution = null;
     let bestScore = 0;
     const idealRatio = 1.6;
@@ -235,92 +231,189 @@ const LayoutPreview = ({
     return bestDistribution;
   };
 
-  const distribution = getOptimalDistribution(layoutDirection);
-  const { columnProperties, rowProperties, totalCols, totalRows } =
-    distribution;
+const distribution = customLayout || getOptimalDistribution(layoutDirection);
+const { columnProperties, rowProperties } = distribution;
 
   const cleanPropertyName = (name) => name.split("#")[0];
 
+  const handleDragEnd = (result) => {
+    if (!result.destination) return;
+
+    const { source, destination } = result;
+    
+    if (source.droppableId === destination.droppableId) {
+      // Reordering within the same list
+      const items = source.droppableId === 'columns' ? [...columnProperties] : [...rowProperties];
+      const [reorderedItem] = items.splice(source.index, 1);
+      items.splice(destination.index, 0, reorderedItem);
+      
+      if (source.droppableId === 'columns') {
+        onLayoutChange({ columnProperties: items, rowProperties });
+      } else {
+        onLayoutChange({ columnProperties, rowProperties: items });
+      }
+    } else {
+      // Moving between lists
+      const sourceItems = source.droppableId === 'columns' ? [...columnProperties] : [...rowProperties];
+      const destItems = destination.droppableId === 'columns' ? [...columnProperties] : [...rowProperties];
+      
+      const [movedItem] = sourceItems.splice(source.index, 1);
+      destItems.splice(destination.index, 0, movedItem);
+      
+      if (source.droppableId === 'columns') {
+        onLayoutChange({ columnProperties: sourceItems, rowProperties: destItems });
+      } else {
+        onLayoutChange({ columnProperties: destItems, rowProperties: sourceItems });
+      }
+    }
+  };
 
   return (
-    <div
-      style={{
-
-        borderRadius: "6px",
-        padding: "12px",
-                border: "1px dashed #d9d9d9",
+    <DragDropContext onDragEnd={handleDragEnd}>
+      <div
+        style={{
+          borderRadius: "6px",
+          padding: "12px",
+          border: "1px dashed #d9d9d9",
           backgroundImage: "radial-gradient(#e0e0e0 1px, transparent 1px)",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "12px",
-        }}
-      ></div>
-
-      {/* Compact representation */}
-      <div
-        style={{
-          display: "flex",
-          gap: "12px",
-          alignItems: "flex-start",
         }}
       >
-        {/* Columns */}
-       <div style={{ flex: 1 }}>
-  <div style={{ fontSize: "9px", color: "#999", marginBottom: "4px" }}>
-    COLUMNS ({columnProperties.length})
-  </div>
-  {columnProperties.length > 0 ? (
-    columnProperties.map((prop) => (
-      <Tag
-        key={prop}
-        size="small"
-        color="blue"
-        style={{ marginBottom: "2px" }}
-      >
-        {cleanPropertyName(prop)} ({propertyGroups[prop].length})
-      </Tag>
-    ))
-  ) : (
-    <Text style={{ fontSize: "10px", color: "#ccc" }}>None</Text>
-  )}
-</div>
-
-        
-
-        <div style={{ fontSize: "16px", color: "#ddd" }}>×</div>
-
-        {/* Rows */}
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: "9px", color: "#999", marginBottom: "4px" }}>
-            ROWS ({rowProperties.length})
+        <div
+          style={{
+            display: "flex",
+            gap: "12px",
+            alignItems: "flex-start",
+          }}
+        >
+          {/* Columns Droppable */}
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: "9px", color: "#999", marginBottom: "4px" }}>
+              COLUMNS ({columnProperties.length})
+            </div>
+            <Droppable droppableId="columns">
+              {(provided, snapshot) => (
+                <div
+                  ref={provided.innerRef}
+                  {...provided.droppableProps}
+                  style={{
+                    minHeight: "40px",
+                    backgroundColor: snapshot.isDraggingOver ? "#e6f7ff" : "transparent",
+                    borderRadius: "4px",
+                    border: snapshot.isDraggingOver ? "2px dashed #1890ff" : "2px dashed transparent",
+                    padding: "4px",
+                  }}
+                >
+                  {columnProperties.map((prop, index) => (
+                    <Draggable key={prop} draggableId={`col-${prop}`} index={index}>
+                      {(provided, snapshot) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          {...provided.dragHandleProps}
+                          style={{
+                            ...provided.draggableProps.style,
+                            marginBottom: "2px",
+                          }}
+                        >
+                          <Tag
+                            size="small"
+                            color="blue"
+                            style={{
+                              cursor: "grab",
+                              opacity: snapshot.isDragging ? 0.5 : 1,
+                            }}
+                          >
+                            {cleanPropertyName(prop)} ({propertyGroups[prop].length})
+                          </Tag>
+                        </div>
+                      )}
+                    </Draggable>
+                  ))}
+                  {provided.placeholder}
+                  {columnProperties.length === 0 && (
+                    <Text style={{ fontSize: "10px", color: "#ccc" }}>
+                      Drag properties here
+                    </Text>
+                  )}
+                </div>
+              )}
+            </Droppable>
           </div>
-          {rowProperties.length > 0 ? (
-            rowProperties.map((prop) => (
-              <Tag
-                key={prop}
-                size="small"
-                color="green"
-                style={{ marginBottom: "2px" }}
-              >
-                {cleanPropertyName(prop)} ({propertyGroups[prop].length})
-              </Tag>
-            ))
-          ) : (
-            <Text style={{ fontSize: "10px", color: "#ccc" }}>None</Text>
-          )}
+
+          <div style={{ fontSize: "16px", color: "#ddd" }}>×</div>
+
+          {/* Rows Droppable */}
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: "9px", color: "#999", marginBottom: "4px" }}>
+              ROWS ({rowProperties.length})
+            </div>
+            <Droppable droppableId="rows">
+              {(provided, snapshot) => (
+                <div
+                  ref={provided.innerRef}
+                  {...provided.droppableProps}
+                  style={{
+                    minHeight: "40px",
+                    backgroundColor: snapshot.isDraggingOver ? "#f6ffed" : "transparent",
+                    borderRadius: "4px",
+                    border: snapshot.isDraggingOver ? "2px dashed #52c41a" : "2px dashed transparent",
+                    padding: "4px",
+                  }}
+                >
+                  {rowProperties.map((prop, index) => (
+                    <Draggable key={prop} draggableId={`row-${prop}`} index={index}>
+                      {(provided, snapshot) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          {...provided.dragHandleProps}
+                          style={{
+                            ...provided.draggableProps.style,
+                            marginBottom: "2px",
+                          }}
+                        >
+                          <Tag
+                            size="small"
+                            color="green"
+                            style={{
+                              cursor: "grab",
+                              opacity: snapshot.isDragging ? 0.5 : 1,
+                            }}
+                          >
+                            {cleanPropertyName(prop)} ({propertyGroups[prop].length})
+                          </Tag>
+                        </div>
+                      )}
+                    </Draggable>
+                  ))}
+                  {provided.placeholder}
+                  {rowProperties.length === 0 && (
+                    <Text style={{ fontSize: "10px", color: "#ccc" }}>
+                      Drag properties here
+                    </Text>
+                  )}
+                </div>
+              )}
+            </Droppable>
+          </div>
         </div>
       </div>
-    </div>
+    </DragDropContext>
   );
 };
 
 const App: React.FC = () => {
-  // Make sure this is correctly typed
+  const [customLayout, setCustomLayout] = useState<{
+  columnProperties: string[];
+  rowProperties: string[];
+} | null>(null);
+
+const handleLayoutChange = (newLayout: {
+  columnProperties: string[];
+  rowProperties: string[];
+}) => {
+  setCustomLayout(newLayout);
+};
   const [selectedComponent, setSelectedComponent] =
     useState<ComponentInfo | null>(null);
   const [spacing, setSpacing] = useState<number>(20);
@@ -393,6 +486,8 @@ const App: React.FC = () => {
       "*"
     );
 
+ 
+
     // Listen for messages from the plugin controller
     window.onmessage = (event) => {
       const { type, data, usageCount, isPaid } = event.data.pluginMessage || {};
@@ -418,9 +513,16 @@ const App: React.FC = () => {
       window.onmessage = null;
     };
   }, []);
+
+     useEffect(() => {
+  // Reset custom layout when layout direction changes
+  setCustomLayout(null);
+}, [layoutDirection]);
+
   // Generate preview data for the selected component
   useEffect(() => {
     if (selectedComponent) {
+       setCustomLayout(null);
       const initialToggles: Record<string, boolean> = {};
       selectedComponent.properties.forEach((prop) => {
         // Only include properties that pass the global filters
@@ -660,6 +762,7 @@ const App: React.FC = () => {
             enabledProperties: enabledProperties,
             layoutDirection: layoutDirection,
             theme: themeToSend,
+              customLayout,
             generatePropertyTable: generatePropertyTable,
           },
         },
@@ -758,7 +861,10 @@ const App: React.FC = () => {
               <Button
                 type={layoutDirection === "optimal" ? "primary" : "dashed"}
                 icon={<BorderOuterOutlined />}
-                onClick={() => setLayoutDirection("optimal")}
+                onClick={() => {
+    setLayoutDirection("optimal");
+    setCustomLayout(null); 
+  }}
               />
             </Tooltip>
 
@@ -766,7 +872,10 @@ const App: React.FC = () => {
               <Button
                 type={layoutDirection === "horizontal" ? "primary" : "dashed"}
                 icon={<ArrowRightOutlined />}
-                onClick={() => setLayoutDirection("horizontal")}
+               onClick={() => {
+    setLayoutDirection("horizontal");
+    setCustomLayout(null); // Add this line
+  }}
               />
             </Tooltip>
 
@@ -774,7 +883,10 @@ const App: React.FC = () => {
               <Button
                 type={layoutDirection === "vertical" ? "primary" : "dashed"}
                 icon={<ArrowDownOutlined />}
-                onClick={() => setLayoutDirection("vertical")}
+               onClick={() => {
+    setLayoutDirection("vertical");
+    setCustomLayout(null); // Add this line
+  }}
               />
             </Tooltip>
           </div>
@@ -1069,6 +1181,8 @@ const App: React.FC = () => {
             includeBooleans={includeBooleans}
             includeExposedInstances={includeExposedInstances}
             toggledProperties={toggledProperties}
+            onLayoutChange={handleLayoutChange}
+              customLayout={customLayout} 
           />
         </div>
         {/* Component Properties Section */}

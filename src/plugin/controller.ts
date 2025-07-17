@@ -310,52 +310,7 @@ async function findComponentSets(): ComponentInfo[] {
   return componentSets;
 }
 
-// Create visual brackets around groups
-function createBracket(
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  color = { r: 0.6, g: 0.4, b: 0.8 }
-): RectangleNode[] {
-  const brackets: RectangleNode[] = [];
-  const thickness = 2;
 
-  // Create dashed border effect
-  const topLine = figma.createRectangle();
-  topLine.x = x;
-  topLine.y = y;
-  topLine.resize(width, thickness);
-  topLine.fills = [{ type: "SOLID", color }];
-  topLine.dashPattern = [10, 5];
-  brackets.push(topLine);
-
-  const bottomLine = figma.createRectangle();
-  bottomLine.x = x;
-  bottomLine.y = y + height - thickness;
-  bottomLine.resize(width, thickness);
-  bottomLine.fills = [{ type: "SOLID", color }];
-  bottomLine.dashPattern = [10, 5];
-  brackets.push(bottomLine);
-
-  const leftLine = figma.createRectangle();
-  leftLine.x = x;
-  leftLine.y = y;
-  leftLine.resize(thickness, height);
-  leftLine.fills = [{ type: "SOLID", color }];
-  leftLine.dashPattern = [10, 5];
-  brackets.push(leftLine);
-
-  const rightLine = figma.createRectangle();
-  rightLine.x = x + width - thickness;
-  rightLine.y = y;
-  rightLine.resize(thickness, height);
-  rightLine.fills = [{ type: "SOLID", color }];
-  rightLine.dashPattern = [10, 5];
-  brackets.push(rightLine);
-
-  return brackets;
-}
 
 // Apply exposed instance properties to an instance
 // Apply exposed instance properties to an instance
@@ -418,7 +373,8 @@ async function createInstancesTable(
   combinations: Record<string, string>[],
   spacing: number = 20,
     layoutDirection?: string ,
-      theme?: any // Add theme parameter
+      theme?: any ,
+        customLayout?: { columnProperties: string[]; rowProperties: string[] } 
 ) {
    const currentTheme = theme || {
     primary: { r: 0.4, g: 0.2, b: 0.8 },
@@ -624,10 +580,19 @@ function getOptimalDistribution(forcedDirection?: string) {
     return bestDistribution;
   }
 
-  const optimalDistribution = getOptimalDistribution(layoutDirection);
-  const columnProperties = optimalDistribution.columnProperties;
-  const rowProperties = optimalDistribution.rowProperties;
+     let columnProperties: string[];
+  let rowProperties: string[];
 
+  if (customLayout) {
+    // Use custom layout if provided
+    columnProperties = customLayout.columnProperties;
+    rowProperties = customLayout.rowProperties;
+  } else {
+    // Use existing optimal distribution logic
+    const optimalDistribution = getOptimalDistribution(layoutDirection);
+    columnProperties = optimalDistribution.columnProperties;
+    rowProperties = optimalDistribution.rowProperties;
+  }
   // Calculate uniform cell size
   const maxInstanceWidth = Math.max(...instances.map((i) => i.width));
   const maxInstanceHeight = Math.max(...instances.map((i) => i.height));
@@ -1023,7 +988,7 @@ for (let row = 0; row < rows; row++) {
 
 figma.ui.onmessage = async (msg) => {
   if (msg.type === "generate-table") {
-  const { componentId, spacing, enabledProperties, theme, generatePropertyTable } = msg;
+  const { componentId, spacing, enabledProperties, theme, generatePropertyTable, customLayout } = msg;
 
     // CHECK PAYMENT STATUS AND USAGE COUNT - ADD THIS BLOCK
     const usageCount = (await figma.clientStorage.getAsync("usage-count")) || 0;
@@ -1094,7 +1059,7 @@ figma.ui.onmessage = async (msg) => {
       );
 
       const combinations = generateCombinations(properties);
-     await createInstancesTable(componentId, combinations, spacing, msg.layoutDirection, theme); // Pass theme
+     await createInstancesTable(componentId, combinations, spacing, msg.layoutDirection, theme,customLayout); // Pass theme
 
   if (generatePropertyTable) {
   const componentName = node.name;
