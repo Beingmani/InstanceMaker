@@ -392,7 +392,7 @@ const LayoutPreview = ({
                           }}
                         >
                           <Tag
-                            size="small"
+
                             color="blue"
                             style={{
                               cursor: "grab",
@@ -449,7 +449,7 @@ const LayoutPreview = ({
                           }}
                         >
                           <Tag
-                            size="small"
+       
                             color="green"
                             style={{
                               cursor: "grab",
@@ -510,6 +510,9 @@ const handleLayoutChange = (newLayout: {
   const [layoutDirection, setLayoutDirection] = useState<
     "optimal" | "horizontal" | "vertical"
   >("optimal");
+  const [headerStyle, setHeaderStyle] = useState<"both" | "box" | "bracket">(
+    "both"
+  );
   const [customColor, setCustomColor] = useState<string>("#6644CC");
   const [selectedTheme, setSelectedTheme] = useState<string>("purple");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -785,7 +788,11 @@ const handleLayoutChange = (newLayout: {
           ...generateCustomTheme(customColor),
         };
       } else {
-        themeToSend = themes[selectedTheme];
+        themeToSend = { ...themes[selectedTheme] };
+      }
+
+      if (themeToSend) {
+        themeToSend = { ...themeToSend, headerStyle };
       }
 
       parent.postMessage(
@@ -827,7 +834,11 @@ const handleLayoutChange = (newLayout: {
           ...generateCustomTheme(customColor),
         };
       } else {
-        themeToSend = themes[selectedTheme];
+        themeToSend = { ...themes[selectedTheme] };
+      }
+
+      if (themeToSend) {
+        themeToSend = { ...themeToSend, headerStyle };
       }
 
       parent.postMessage(
@@ -908,14 +919,14 @@ const handleLayoutChange = (newLayout: {
           <AwardsBanner onDismiss={() => setShowAwardsBanner(false)} />
         )}
 
-        {/* <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
+        <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
           <Button size="small" onClick={toggleDevPaymentStatus}>
             Toggle Payment
           </Button>
           <Button size="small" onClick={resetUsageCount}>
             Reset Usage
           </Button>
-        </div> */}
+        </div>
 
         {!isPaid && <LoopingUpgradeButton onClick={initiatePayment} />}
         <div
@@ -1076,6 +1087,38 @@ const handleLayoutChange = (newLayout: {
               </Button>
             </Tooltip>
           </div>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginTop: "12px",
+          }}
+        >
+          <Text
+            style={{
+              fontSize: "12px",
+              color: "#888",
+              fontWeight: "bold",
+              display: "block",
+            }}
+          >
+            Header Style
+          </Text>
+          <Select
+            size="small"
+            value={headerStyle}
+            style={{ minWidth: 160 }}
+            onChange={(value) =>
+              setHeaderStyle(value as "both" | "box" | "bracket")
+            }
+          >
+            <Option value="both">Boxes & Brackets</Option>
+            <Option value="box">Boxes Only</Option>
+            <Option value="bracket">Brackets Only</Option>
+          </Select>
         </div>
 
         <div

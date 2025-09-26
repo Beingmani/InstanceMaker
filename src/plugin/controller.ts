@@ -650,6 +650,64 @@ function getOptimalDistribution(forcedDirection?: string) {
   const dynamicHeaderHeight = columnProperties.length * 40 + 20;
   const dynamicLabelWidth = rowProperties.length * 60 + 60; // Dynamic width for row spans
 
+  const headerStyle = (theme?.headerStyle as "box" | "bracket" | "both") || "both";
+  const shouldDrawBoxes = headerStyle === "box" || headerStyle === "both";
+  const shouldDrawBrackets = headerStyle === "bracket" || headerStyle === "both";
+
+  const bracketSpacing = 6;
+
+  const createColumnBracket = (x: number, y: number, width: number) => {
+    const bracketDepth = 10;
+    const hasRoomForSpacing = width > bracketSpacing * 2;
+    const horizontalOffset = hasRoomForSpacing ? bracketSpacing : 0;
+    const innerWidth = hasRoomForSpacing ? width - bracketSpacing * 2 : width;
+
+    const bracket = figma.createVector();
+    bracket.name = "Column Bracket";
+    bracket.vectorPaths = [
+      {
+        windingRule: "NONZERO",
+        data: hasRoomForSpacing
+          ? `M 0 ${bracketDepth} L 0 0 L ${innerWidth} 0 L ${innerWidth} ${bracketDepth}`
+          : `M 0 ${bracketDepth} L 0 0 L ${width} 0 L ${width} ${bracketDepth}`,
+      },
+    ];
+    bracket.fills = [];
+    bracket.strokeWeight = 1.5;
+    bracket.strokes = [{ type: "SOLID", color: currentTheme.primary }];
+    bracket.strokeCap = "ROUND";
+    bracket.strokeJoin = "ROUND";
+    bracket.x = x + horizontalOffset;
+    bracket.y = y;
+    return bracket;
+  };
+
+  const createRowBracket = (x: number, y: number, height: number) => {
+    const bracketWidth = 10;
+    const hasRoomForSpacing = height > bracketSpacing * 2;
+    const verticalOffset = hasRoomForSpacing ? bracketSpacing : 0;
+    const innerHeight = hasRoomForSpacing ? height - bracketSpacing * 2 : height;
+
+    const bracket = figma.createVector();
+    bracket.name = "Row Bracket";
+    bracket.vectorPaths = [
+      {
+        windingRule: "NONZERO",
+        data: hasRoomForSpacing
+          ? `M ${bracketWidth} 0 L 0 0 L 0 ${innerHeight} L ${bracketWidth} ${innerHeight}`
+          : `M ${bracketWidth} 0 L 0 0 L 0 ${height} L ${bracketWidth} ${height}`,
+      },
+    ];
+    bracket.fills = [];
+    bracket.strokeWeight = 1.5;
+    bracket.strokes = [{ type: "SOLID", color: currentTheme.primary }];
+    bracket.strokeCap = "ROUND";
+    bracket.strokeJoin = "ROUND";
+    bracket.x = x;
+    bracket.y = y + verticalOffset;
+    return bracket;
+  };
+
   // Update total dimensions
   const totalWidth = dynamicLabelWidth + gridWidth + 48;
   const totalHeight = dynamicHeaderHeight + gridHeight + 48;
@@ -674,6 +732,9 @@ const mainContainer = figma.createFrame();
 
   // 🎯 CREATE SPANNING COLUMN HEADER BOXES
   function createSpanningColumnHeaders() {
+    const columnHeaderHeight = 40;
+    const bracketDepth = 10;
+
     columnProperties.forEach((prop, propIndex) => {
       const yLevel = propIndex * 40;
 
@@ -706,32 +767,42 @@ const mainContainer = figma.createFrame();
         const startX = dynamicLabelWidth + span.startCol * cellSize;
         const width = (span.endCol - span.startCol + 1) * cellSize;
 
-        const spanBox = figma.createFrame();
-        spanBox.name = `Col ${prop}: ${span.value}`;
-spanBox.x = startX ;
-spanBox.y = yLevel;
-      
-        spanBox.resize(width, 35);
-        spanBox.fills = [
-          {
-            type: "SOLID",
-            color: currentTheme.secondary,
-          },
-        ];
-        spanBox.cornerRadius = 6;
-        spanBox.strokeAlign = "INSIDE";
-        spanBox.strokes = [
-          { type: "SOLID", color: currentTheme.stroke },
-        ];
-        spanBox.strokeWeight = 0.5;
+        if (shouldDrawBoxes) {
+          const spanBox = figma.createFrame();
+          spanBox.name = `Col ${prop}: ${span.value}`;
+          spanBox.x = startX;
+          spanBox.y = yLevel;
+          spanBox.resize(width, columnHeaderHeight);
+          spanBox.fills = [
+            {
+              type: "SOLID",
+              color: currentTheme.secondary,
+            },
+          ];
+          spanBox.cornerRadius = 6;
+          spanBox.strokeAlign = "INSIDE";
+          spanBox.strokes = [
+            { type: "SOLID", color: currentTheme.stroke },
+          ];
+          spanBox.strokeWeight = 0.5;
 
-        foundationContainer.appendChild(spanBox);
+          foundationContainer.appendChild(spanBox);
+        }
+
+        if (shouldDrawBrackets) {
+          const bracketY = yLevel + columnHeaderHeight - bracketDepth;
+          const bracket = createColumnBracket(startX, bracketY, width);
+          foundationContainer.appendChild(bracket);
+        }
       });
     });
   }
 
   // 🎯 CREATE SPANNING ROW HEADER BOXES
   function createSpanningRowHeaders() {
+    const rowHeaderWidth = 55;
+    const bracketWidth = 10;
+
     rowProperties.forEach((prop, propIndex) => {
       const xLevel = propIndex * 60; // Stack row properties horizontally
 
@@ -764,25 +835,33 @@ spanBox.y = yLevel;
         const startY = dynamicHeaderHeight + span.startRow * cellSize;
         const height = (span.endRow - span.startRow + 1) * cellSize;
 
-        const spanBox = figma.createFrame();
-        spanBox.name = `Row ${prop}: ${span.value}`;
-spanBox.x = xLevel ;
-spanBox.y = startY ;
-        spanBox.resize(55, height);
-        spanBox.fills = [
-          {
-            type: "SOLID",
-            color: currentTheme.secondary
-          },
-        ];
-        spanBox.cornerRadius = 6;
-        spanBox.strokeAlign = "INSIDE";
-        spanBox.strokes = [
-          { type: "SOLID", color: currentTheme.stroke },
-        ];
-        spanBox.strokeWeight = 0.5;
+        if (shouldDrawBoxes) {
+          const spanBox = figma.createFrame();
+          spanBox.name = `Row ${prop}: ${span.value}`;
+          spanBox.x = xLevel;
+          spanBox.y = startY;
+          spanBox.resize(rowHeaderWidth, height);
+          spanBox.fills = [
+            {
+              type: "SOLID",
+              color: currentTheme.secondary,
+            },
+          ];
+          spanBox.cornerRadius = 6;
+          spanBox.strokeAlign = "INSIDE";
+          spanBox.strokes = [
+            { type: "SOLID", color: currentTheme.stroke },
+          ];
+          spanBox.strokeWeight = 0.5;
 
-        foundationContainer.appendChild(spanBox);
+          foundationContainer.appendChild(spanBox);
+        }
+
+        if (shouldDrawBrackets) {
+          const bracketX = xLevel + rowHeaderWidth - bracketWidth;
+          const bracket = createRowBracket(bracketX, startY, height);
+          foundationContainer.appendChild(bracket);
+        }
       });
     });
   }
@@ -899,18 +978,21 @@ for (let row = 0; row < rows; row++) {
       // Property name (small, gray)
       const propLabel = createText(cleanPropertyName(prop), 9, false, { r: 0.6, g: 0.6, b: 0.6 });
       propLabel.x = centerX - propLabel.width / 2;
-      propLabel.y = yLevel + 5;
+      propLabel.y = yLevel + 2;
       textLabelsLayer.appendChild(propLabel);
 
       // Property value (bold, colored)
-     const valueLabel = createText(span.value, 11, true, currentTheme.primary);
+      const valueLabel = createText(span.value, 11, true, currentTheme.primary);
       valueLabel.x = centerX - valueLabel.width / 2;
-      valueLabel.y = yLevel + 18;
+      valueLabel.y = yLevel + 12;
       textLabelsLayer.appendChild(valueLabel);
     });
   });
 
   // 📝 CREATE SPANNING ROW TEXT LABELS
+  const rowHeaderWidth = 55;
+  const bracketWidth = 10;
+
   rowProperties.forEach((prop, propIndex) => {
     const xLevel = propIndex * 60;
 
@@ -936,14 +1018,16 @@ for (let row = 0; row < rows; row++) {
       const centerY = startY + height / 2;
 
       // Property name (small, gray)
+      const contentCenterX = xLevel + (rowHeaderWidth - bracketWidth) / 2;
+
       const propLabel = createText(cleanPropertyName(prop), 8, false, { r: 0.6, g: 0.6, b: 0.6 });
-      propLabel.x = xLevel + 27 - propLabel.width / 2;
+      propLabel.x = contentCenterX - propLabel.width / 2;
       propLabel.y = centerY - 10;
       textLabelsLayer.appendChild(propLabel);
 
       // Property value (bold, colored)
-     const valueLabel = createText(span.value, 11, true, currentTheme.primary);
-      valueLabel.x = xLevel + 27 - valueLabel.width / 2;
+      const valueLabel = createText(span.value, 11, true, currentTheme.primary);
+      valueLabel.x = contentCenterX - valueLabel.width / 2;
       valueLabel.y = centerY + 2;
       textLabelsLayer.appendChild(valueLabel);
     });
