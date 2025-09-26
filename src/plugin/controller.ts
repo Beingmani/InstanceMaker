@@ -650,9 +650,9 @@ function getOptimalDistribution(forcedDirection?: string) {
   const dynamicHeaderHeight = columnProperties.length * 40 + 20;
   const dynamicLabelWidth = rowProperties.length * 60 + 60; // Dynamic width for row spans
 
-  const headerStyle = (theme?.headerStyle as "box" | "bracket" | "both") || "both";
-  const shouldDrawBoxes = headerStyle === "box" || headerStyle === "both";
-  const shouldDrawBrackets = headerStyle === "bracket" || headerStyle === "both";
+  const headerStyle = (theme?.headerStyle as "box" | "bracket") || "box";
+  const shouldDrawBoxes = headerStyle === "box";
+  const shouldDrawBrackets = headerStyle === "bracket";
 
   const bracketSpacing = 6;
 
@@ -673,10 +673,11 @@ function getOptimalDistribution(forcedDirection?: string) {
       },
     ];
     bracket.fills = [];
-    bracket.strokeWeight = 1.5;
+    bracket.strokeWeight = 1;
     bracket.strokes = [{ type: "SOLID", color: currentTheme.primary }];
     bracket.strokeCap = "ROUND";
     bracket.strokeJoin = "ROUND";
+    bracket.cornerRadius = 3;
     bracket.x = x + horizontalOffset;
     bracket.y = y;
     return bracket;
@@ -699,10 +700,11 @@ function getOptimalDistribution(forcedDirection?: string) {
       },
     ];
     bracket.fills = [];
-    bracket.strokeWeight = 1.5;
+    bracket.strokeWeight = 1;
     bracket.strokes = [{ type: "SOLID", color: currentTheme.primary }];
     bracket.strokeCap = "ROUND";
     bracket.strokeJoin = "ROUND";
+    bracket.cornerRadius = 3;
     bracket.x = x;
     bracket.y = y + verticalOffset;
     return bracket;
@@ -879,26 +881,42 @@ const mainContainer = figma.createFrame();
   gridContainer.strokeAlign = "INSIDE";
   gridContainer.cornerRadius = 8;
 
-  // ✅ Create grid cells with offset positioning to prevent border overlap
+  // ✅ Create grid cells with individual stroke weights to avoid double borders
 for (let row = 0; row < rows; row++) {
   for (let col = 0; col < cols; col++) {
     const cell = figma.createFrame();
     cell.name = `Cell ${row}-${col}`;
-    
-      cell.x = dynamicLabelWidth + col * cellSize;
-      cell.y = dynamicHeaderHeight + row * cellSize;
-    
+
+    cell.x = col * cellSize;
+    cell.y = row * cellSize;
+
     cell.resize(cellSize, cellSize);
     cell.fills = [
-      { type: "SOLID", color: { r: 1, g: 1, b: 1 }, opacity: 0.8 },
+      { type: "SOLID", color: { r: 1, g: 1, b: 1 }, opacity: 0 },
     ];
-    cell.strokeAlign = "INSIDE";
-    cell.strokes = [{ type: "SOLID", color: currentTheme.accent }];
-    cell.strokeWeight = 1;
-    cell.dashPattern = [8, 4];
-    cell.cornerRadius = 4;
 
-    foundationContainer.appendChild(cell);
+    const isTopRow = row === 0;
+    const isBottomRow = row === rows - 1;
+    const isFirstCol = col === 0;
+    const isLastCol = col === cols - 1;
+
+    cell.strokes = [{ type: "SOLID", color: currentTheme.accent }];
+    cell.strokeAlign = "INSIDE";
+    cell.strokeWeight = 0;
+    (cell as any).strokeTopWeight = 1; // Each cell owns its top edge
+    (cell as any).strokeLeftWeight = 1; // Each cell owns its left edge
+    (cell as any).strokeRightWeight = isLastCol ? 1 : 0; // Only last column draws the right edge
+    (cell as any).strokeBottomWeight = isBottomRow ? 1 : 0; // Only last row draws the bottom edge
+    cell.dashPattern = [8, 4];
+
+    // Rounded corners only on outer boundary
+    cell.cornerRadius = 0;
+    cell.topLeftRadius = isTopRow && isFirstCol ? 4 : 0;
+    cell.topRightRadius = isTopRow && isLastCol ? 4 : 0;
+    cell.bottomLeftRadius = isBottomRow && isFirstCol ? 4 : 0;
+    cell.bottomRightRadius = isBottomRow && isLastCol ? 4 : 0;
+
+    gridContainer.appendChild(cell);
   }
 }
 

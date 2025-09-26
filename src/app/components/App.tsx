@@ -4,7 +4,6 @@ import PropertyTable from "../components/propertyTable";
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import {
   Button,
-  Select,
   Card,
   Typography,
   Space,
@@ -16,7 +15,7 @@ import {
   Progress,
   Tooltip,
 } from "antd";
-import { BooleanIcon, VariantIcon, NestedIcon } from "./customIcons";
+import { BooleanIcon, VariantIcon, NestedIcon, HeaderBoxIcon, HeaderBracketIcon } from "./customIcons";
 import {
   PlayCircleOutlined,
   ArrowRightOutlined,
@@ -36,7 +35,6 @@ import {
 } from "@ant-design/icons";
 
 const { Title, Text } = Typography;
-const { Option } = Select;
 
 interface ComponentProperty {
   name: string;
@@ -510,8 +508,8 @@ const handleLayoutChange = (newLayout: {
   const [layoutDirection, setLayoutDirection] = useState<
     "optimal" | "horizontal" | "vertical"
   >("optimal");
-  const [headerStyle, setHeaderStyle] = useState<"both" | "box" | "bracket">(
-    "both"
+  const [headerStyle, setHeaderStyle] = useState<"box" | "bracket">(
+    "box"
   );
   const [customColor, setCustomColor] = useState<string>("#6644CC");
   const [selectedTheme, setSelectedTheme] = useState<string>("purple");
@@ -1107,18 +1105,25 @@ const handleLayoutChange = (newLayout: {
           >
             Header Style
           </Text>
-          <Select
-            size="small"
-            value={headerStyle}
-            style={{ minWidth: 160 }}
-            onChange={(value) =>
-              setHeaderStyle(value as "both" | "box" | "bracket")
-            }
-          >
-            <Option value="both">Boxes & Brackets</Option>
-            <Option value="box">Boxes Only</Option>
-            <Option value="bracket">Brackets Only</Option>
-          </Select>
+          <div style={{ display: "flex", gap: 8 }}>
+            <Tooltip title="Box Headers">
+              <Button
+       
+                type={headerStyle === "box" ? "primary" : "dashed"}
+                icon={<HeaderBoxIcon />}
+                onClick={() => setHeaderStyle("box")}
+              />
+            </Tooltip>
+
+            <Tooltip title="Bracket Headers">
+              <Button
+          
+                type={headerStyle === "bracket" ? "primary" : "dashed"}
+                icon={<HeaderBracketIcon />}
+                onClick={() => setHeaderStyle("bracket")}
+              />
+            </Tooltip>
+          </div>
         </div>
 
         <div
