@@ -31,6 +31,8 @@ import {
   RightOutlined,
   ArrowDownOutlined,
   BorderOuterOutlined,
+  TrophyOutlined,
+  FireOutlined,
 } from "@ant-design/icons";
 
 const { Title, Text } = Typography;
@@ -98,6 +100,69 @@ const UsageAlert = ({
       >
         {renderUsageText()}
       </Text>
+    </div>
+  );
+};
+
+const AwardsBanner = ({ onDismiss }) => {
+  return (
+    <div
+      style={{
+        background: "linear-gradient(90deg, #4f46e5 0%, #7c3aed 100%)",
+        borderRadius: "8px",
+        padding: "16px",
+        marginBottom: "16px",
+        color: "white",
+        position: "relative",
+        boxShadow: "0 4px 12px rgba(79, 70, 229, 0.15)",
+      }}
+    >
+      <div style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: "16px"
+      }}>
+        <div style={{ flex: 1 }}>
+          <div style={{
+            fontSize: "13px",
+            fontWeight: "600",
+            marginBottom: "4px",
+            opacity: 0.9
+          }}>
+            Design System Awards Nominee
+          </div>
+          <div style={{
+            fontSize: "12px",
+            lineHeight: "1.4",
+            opacity: 0.85
+          }}>
+            InstanceMaker is nominated! Help us win by voting in the Plugin category.
+          </div>
+        </div>
+        
+        <Button
+          type="default"
+          size="small"
+          onClick={() => {
+            window.open("https://awards.zeroheight.com/voting/#plugin", "_blank");
+          }}
+          style={{
+            background: "rgba(255, 255, 255, 0.9)",
+            border: "none",
+            color: "#4f46e5",
+            fontWeight: "600",
+            fontSize: "12px",
+            height: "32px",
+            paddingLeft: "16px",
+            paddingRight: "16px",
+            borderRadius: "6px",
+            boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)"
+          }}
+        >
+          Vote for Us
+        </Button>
+      </div>
     </div>
   );
 };
@@ -414,6 +479,7 @@ const LayoutPreview = ({
 };
 
 const App: React.FC = () => {
+  const [showAwardsBanner, setShowAwardsBanner] = useState<boolean>(true);
   const [customLayout, setCustomLayout] = useState<{
   columnProperties: string[];
   rowProperties: string[];
@@ -837,6 +903,11 @@ const handleLayoutChange = (newLayout: {
   return (
     <div style={{ padding: "12px", fontFamily: "Inter, sans-serif" }}>
       <Space direction="vertical" size={4} style={{ width: "100%" }}>
+        {/* Awards Banner */}
+        {showAwardsBanner && (
+          <AwardsBanner onDismiss={() => setShowAwardsBanner(false)} />
+        )}
+
         {/* <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
           <Button size="small" onClick={toggleDevPaymentStatus}>
             Toggle Payment
@@ -1116,7 +1187,7 @@ const handleLayoutChange = (newLayout: {
                       zIndex: 1,
                     }}
                   >
-                    <Tag color={color} size="small">
+                    <Tag color={color} >
                       {message}
                     </Tag>
                   </div>
@@ -1346,7 +1417,7 @@ const handleLayoutChange = (newLayout: {
 
                           <Text code>{cleanPropertyName(property.name)}</Text>
                           <Tag
-                            size="small"
+                  
                             color={
                               property.type === "VARIANT"
                                 ? "blue"
