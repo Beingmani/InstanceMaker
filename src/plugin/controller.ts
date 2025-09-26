@@ -1009,7 +1009,6 @@ for (let row = 0; row < rows; row++) {
 
   // 📝 CREATE SPANNING ROW TEXT LABELS
   const rowHeaderWidth = 55;
-  const bracketWidth = 10;
 
   rowProperties.forEach((prop, propIndex) => {
     const xLevel = propIndex * 60;
@@ -1035,9 +1034,9 @@ for (let row = 0; row < rows; row++) {
       const height = (span.endRow - span.startRow + 1) * cellSize;
       const centerY = startY + height / 2;
 
-      // Property name (small, gray)
-      const contentCenterX = xLevel + (rowHeaderWidth - bracketWidth) / 2;
+      const contentCenterX = xLevel + rowHeaderWidth / 2;
 
+      // Property name (small, gray)
       const propLabel = createText(cleanPropertyName(prop), 8, false, { r: 0.6, g: 0.6, b: 0.6 });
       propLabel.x = contentCenterX - propLabel.width / 2;
       propLabel.y = centerY - 10;

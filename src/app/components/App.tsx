@@ -135,7 +135,7 @@ const AwardsBanner = ({ onDismiss }) => {
             lineHeight: "1.4",
             opacity: 0.85
           }}>
-            InstanceMaker is nominated! Help us win by voting in the Plugin category.
+            Instancer is nominated! Help us win by voting in the Plugin category.
           </div>
         </div>
         
@@ -342,6 +342,15 @@ const LayoutPreview = ({
     }
   };
 
+  const tagStyle: React.CSSProperties = {
+    display: "inline-block",
+    maxWidth: "100%",
+    whiteSpace: "normal",
+    wordBreak: "break-word",
+    overflowWrap: "break-word",
+    lineHeight: "1.2",
+  };
+
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
       <div
@@ -357,10 +366,11 @@ const LayoutPreview = ({
             display: "flex",
             gap: "12px",
             alignItems: "flex-start",
+            overflow: "hidden",
           }}
         >
           {/* Columns Droppable */}
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: "9px", color: "#999", marginBottom: "4px" }}>
               COLUMNS ({filteredColumnProperties.length})
             </div>
@@ -375,6 +385,8 @@ const LayoutPreview = ({
                     borderRadius: "4px",
                     border: snapshot.isDraggingOver ? "2px dashed #1890ff" : "2px dashed transparent",
                     padding: "4px",
+                    maxWidth: "100%",
+                    overflow: "hidden",
                   }}
                 >
                   {filteredColumnProperties.map((prop, index) => (
@@ -390,9 +402,9 @@ const LayoutPreview = ({
                           }}
                         >
                           <Tag
-
                             color="blue"
                             style={{
+                              ...tagStyle,
                               cursor: "grab",
                               opacity: snapshot.isDragging ? 0.5 : 1,
                             }}
@@ -417,7 +429,7 @@ const LayoutPreview = ({
           <div style={{ fontSize: "16px", color: "#ddd" }}>×</div>
 
           {/* Rows Droppable */}
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: "9px", color: "#999", marginBottom: "4px" }}>
               ROWS ({filteredRowProperties.length})
             </div>
@@ -432,6 +444,8 @@ const LayoutPreview = ({
                     borderRadius: "4px",
                     border: snapshot.isDraggingOver ? "2px dashed #52c41a" : "2px dashed transparent",
                     padding: "4px",
+                    maxWidth: "100%",
+                    overflow: "hidden",
                   }}
                 >
                   {filteredRowProperties.map((prop, index) => (
@@ -447,9 +461,9 @@ const LayoutPreview = ({
                           }}
                         >
                           <Tag
-       
                             color="green"
                             style={{
+                              ...tagStyle,
                               cursor: "grab",
                               opacity: snapshot.isDragging ? 0.5 : 1,
                             }}
