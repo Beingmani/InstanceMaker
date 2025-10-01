@@ -988,23 +988,38 @@ for (let row = 0; row < rows; row++) {
     if (currentSpan) spans.push(currentSpan);
 
     // Create labels for each column span
-    spans.forEach((span) => {
-      const startX = dynamicLabelWidth + span.startCol * cellSize;
-      const width = (span.endCol - span.startCol + 1) * cellSize;
-      const centerX = startX + width / 2;
 
-      // Property name (small, gray)
-      const propLabel = createText(cleanPropertyName(prop), 9, false, { r: 0.6, g: 0.6, b: 0.6 });
-      propLabel.x = centerX - propLabel.width / 2;
-      propLabel.y = yLevel + 2;
-      textLabelsLayer.appendChild(propLabel);
+spans.forEach((span) => {
+  const startX = dynamicLabelWidth + span.startCol * cellSize;
+  const width = (span.endCol - span.startCol + 1) * cellSize;
+  const columnHeaderHeight = 40;
 
-      // Property value (bold, colored)
-      const valueLabel = createText(span.value, 11, true, currentTheme.primary);
-      valueLabel.x = centerX - valueLabel.width / 2;
-      valueLabel.y = yLevel + 12;
-      textLabelsLayer.appendChild(valueLabel);
-    });
+  // Property name (small, gray) - CENTER aligned within box
+  const propLabel = createText(cleanPropertyName(prop), 9, false, { r: 0.6, g: 0.6, b: 0.6 });
+  propLabel.textAlignHorizontal = "CENTER";
+  propLabel.textAutoResize = "HEIGHT";
+  propLabel.resize(width, propLabel.height);
+
+  // Property value (bold, colored) - CENTER aligned within box
+  const valueLabel = createText(span.value, 11, true, currentTheme.primary);
+  valueLabel.textAlignHorizontal = "CENTER";
+  valueLabel.textAutoResize = "HEIGHT";
+  valueLabel.resize(width, valueLabel.height);
+
+  // Calculate vertical centering
+  const labelSpacing = 2;
+  const combinedHeight = propLabel.height + labelSpacing + valueLabel.height;
+  const verticalCenter = yLevel + (columnHeaderHeight / 2);
+  const groupTop = verticalCenter - (combinedHeight / 2);
+
+  propLabel.x = startX;
+  propLabel.y = groupTop;
+  textLabelsLayer.appendChild(propLabel);
+
+  valueLabel.x = startX;
+  valueLabel.y = groupTop + propLabel.height + labelSpacing;
+  textLabelsLayer.appendChild(valueLabel);
+});
   });
 
   // 📝 CREATE SPANNING ROW TEXT LABELS
