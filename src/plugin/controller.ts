@@ -1009,6 +1009,10 @@ for (let row = 0; row < rows; row++) {
 
   // 📝 CREATE SPANNING ROW TEXT LABELS
   const rowHeaderWidth = 55;
+  const bracketWidth = 10;
+  const rowLabelPadding = 6;
+  const rowLabelSpacing = 2;
+  const minRowTextWidth = 32;
 
   rowProperties.forEach((prop, propIndex) => {
     const xLevel = propIndex * 60;
@@ -1033,19 +1037,44 @@ for (let row = 0; row < rows; row++) {
       const startY = dynamicHeaderHeight + span.startRow * cellSize;
       const height = (span.endRow - span.startRow + 1) * cellSize;
       const centerY = startY + height / 2;
+      const usableHeaderWidth = rowHeaderWidth - (shouldDrawBrackets ? bracketWidth : 0) - rowLabelPadding * 2;
+      const availableTextWidth = Math.max(minRowTextWidth, usableHeaderWidth);
+      const textRightEdge = xLevel + rowHeaderWidth - (shouldDrawBrackets ? bracketWidth : 0) - rowLabelPadding;
+      const textLeftEdge = textRightEdge - availableTextWidth;
 
-      const contentCenterX = xLevel + rowHeaderWidth / 2;
+    // Calculate box dimensions for center alignment
+const boxWidth = rowHeaderWidth - (shouldDrawBrackets ? bracketWidth : 0);
+const boxLeft = xLevel;
 
-      // Property name (small, gray)
-      const propLabel = createText(cleanPropertyName(prop), 8, false, { r: 0.6, g: 0.6, b: 0.6 });
-      propLabel.x = contentCenterX - propLabel.width / 2;
-      propLabel.y = centerY - 10;
+// Property name (small, gray) - CENTER aligned
+const propLabel = createText(cleanPropertyName(prop), 8, false, { r: 0.6, g: 0.6, b: 0.6 });
+propLabel.textAlignHorizontal = "CENTER";
+propLabel.textAutoResize = "HEIGHT";
+propLabel.resize(boxWidth, propLabel.height);
+
+// Property value (bold, colored) - CENTER aligned
+const valueLabel = createText(span.value, 11, true, currentTheme.primary);
+valueLabel.textAlignHorizontal = "CENTER";
+valueLabel.textAutoResize = "HEIGHT";
+valueLabel.resize(boxWidth, valueLabel.height);
+
+const combinedHeight = propLabel.height + rowLabelSpacing + valueLabel.height;
+let groupTop = centerY - combinedHeight / 2;
+if (groupTop < startY) {
+  groupTop = startY + 2;
+}
+if (groupTop + combinedHeight > startY + height) {
+  groupTop = Math.max(startY + 2, startY + height - combinedHeight - 2);
+}
+
+// Position labels at the box's left edge (text is centered within)
+propLabel.x = boxLeft;
+propLabel.y = groupTop;
+
+valueLabel.x = boxLeft;
+valueLabel.y = propLabel.y + propLabel.height + rowLabelSpacing;
+
       textLabelsLayer.appendChild(propLabel);
-
-      // Property value (bold, colored)
-      const valueLabel = createText(span.value, 11, true, currentTheme.primary);
-      valueLabel.x = contentCenterX - valueLabel.width / 2;
-      valueLabel.y = centerY + 2;
       textLabelsLayer.appendChild(valueLabel);
     });
   });

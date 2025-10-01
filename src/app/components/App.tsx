@@ -931,14 +931,14 @@ const handleLayoutChange = (newLayout: {
           <AwardsBanner onDismiss={() => setShowAwardsBanner(false)} />
         )}
 
-        <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
+        {/* <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
           <Button size="small" onClick={toggleDevPaymentStatus}>
             Toggle Payment
           </Button>
           <Button size="small" onClick={resetUsageCount}>
             Reset Usage
           </Button>
-        </div>
+        </div> */}
 
         {!isPaid && <LoopingUpgradeButton onClick={initiatePayment} />}
         <div
